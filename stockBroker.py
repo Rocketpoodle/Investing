@@ -230,7 +230,6 @@ def autoBuy(symbol,shares,date):
     # autoBuy handles a buy from transaction
     # asks ticker, prints price, then prompts for quantity and validates against bankroll
     # returns logstring to write to transactions.log
-
     buyTicker = symbol
     priceOfStock = fetchSqlData.priceQuery(buyTicker, date, CONNECTION)
     sharesToBuy = shares

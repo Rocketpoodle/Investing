@@ -65,7 +65,8 @@ def creteBrokerTables(connection):
     DBcurr = connection.cursor()
     try:
         DBcurr.execute("CREATE TABLE StockBroker (Name varchar, Bank float, Date date);")
-        DBcurr.execute("CREATE TABLE OwnedStocks (Symbol varchar, Shares int, Price float, PurchaseDate date);")
+        DBcurr.execute("CREATE TABLE OwnedStocks (Broker varchar, Symbol varchar, Shares int, Price float, PurchaseDate date);")
+        DBcurr.execute("CREATE TABLE TransLog (Broker varchar, Shares int, Price float, BuySell varchar);")
         connection.commit()
     except:
         connection.rollback()
@@ -81,8 +82,9 @@ def dropBrokerTables(connection):
     """
     DBcurr = connection.cursor()
     try:
-        DBcurr.execute("DROP TABLE StockBroker")
-        DBcurr.execute("DROP TABLE OwnedStocks")
+        DBcurr.execute("DROP TABLE StockBroker;")
+        DBcurr.execute("DROP TABLE OwnedStocks;")
+        DBcurr.execute("DROP TABLE TransLog;")
         connection.commit()
     except:
         connection.rollback()
@@ -97,7 +99,7 @@ def createBroker(name, bank, date, connection):
     bank - float doller amount to give broker
     date - date for broker to start on
     connection - db conneciton object
-    return boolean success
+    return: boolean success
     """
     DBcurr = connection.cursor()
     try:
@@ -110,4 +112,3 @@ def createBroker(name, bank, date, connection):
         return False
     DBcurr.close()
     return True
-

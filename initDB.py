@@ -20,7 +20,7 @@ def createTables(connection):
     success = True
     # try to create all database tables
     try:
-        DBcurr.execute("CREATE TABLE StockInfo (Symbol varchar, StartDate date, EndDate date, Usable boolean);")
+        DBcurr.execute("CREATE TABLE StockInfo (Symbol varchar, EndDate date, Usable boolean);")
         # Unique index on Symbol to lookup
         DBcurr.execute("CREATE UNIQUE INDEX SymUIndex ON StockInfo (Symbol);")
         DBcurr.execute("CREATE INDEX EndIndex ON StockInfo (EndDate);")
@@ -55,4 +55,59 @@ def dropTables(connection):
     # close cursor
     DBcurr.close()
     return success
+
+def creteBrokerTables(connection):
+    """
+    createBrokerTable: creates table to keep track of broker info
+    connection - database connection object
+    return: boolean of success
+    """
+    DBcurr = connection.cursor()
+    try:
+        DBcurr.execute("CREATE TABLE StockBroker (Name varchar, Bank float, Date date);")
+        DBcurr.execute("CREATE TABLE OwnedStocks (Symbol varchar, Shares int, Price float, PurchaseDate date);")
+        connection.commit()
+    except:
+        connection.rollback()
+        return False
+    DBcurr.close()
+    return True
+
+def dropBrokerTables(connection):
+    """
+    dropBrokerTables: drop broker tables
+    connection - database connection object
+    return: boolean success
+    """
+    DBcurr = connection.cursor()
+    try:
+        DBcurr.execute("DROP TABLE StockBroker")
+        DBcurr.execute("DROP TABLE OwnedStocks")
+        connection.commit()
+    except:
+        connection.rollback()
+        return False
+    DBcurr.close()
+    return True
+
+def createBroker(name, bank, date, connection):
+    """
+    createBroker: creates broker with Name Bankroll and Date on connection
+    name - string name of broker
+    bank - float doller amount to give broker
+    date - date for broker to start on
+    connection - db conneciton object
+    return boolean success
+    """
+    DBcurr = connection.cursor()
+    try:
+        sqlString = "INSERT INTO StockBroker (Name, Bank, Date) VALUES (%s,%s,%s);"
+        sqlItems = [name,bank,date]
+        DBcurr.execute(sqlString,sqlItems)
+        connection.commit()
+    except:
+        connection.rollback()
+        return False
+    DBcurr.close()
+    return True
 

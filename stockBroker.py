@@ -4,7 +4,8 @@ import soloFetch
 import getRatings
 import StockUpdater
 import ownedRatings
-
+import fetchSqlData
+import initDB
 
 #================================================#
 #===================== INIT =====================#
@@ -16,6 +17,8 @@ DAY = 0
 STOCKS = []
 UNRESOLVED = 0
 HOLDINGS = 0
+CONNECTION = initDB.dbLogin()
+BROKERNAME = "Broker1"
 # gets bankroll and day
 with open("./broker/brokerInfo.csv", 'r', newline='') as brokerFile:
     brokerReader = csv.reader(brokerFile)
@@ -156,7 +159,7 @@ def transaction():
     elif transactionType == "s" or transactionType == "S":
         transactionReturn = sellTransaction()
     # make sure transaction took place
-    if transactionReturn != None:
+    if transactionReturn:
         with open("./broker/transactions.log", 'a', newline='') as transactionLog:
             transactionLog.write(transactionReturn)
         with open("./broker/ownedStocks.csv", 'w', newline='') as updateOwnedFile:
@@ -223,6 +226,77 @@ def printLog():
             transactionCost += 9
     print("Broker Fees: " + str(transactionCost))
 
+def autoBuy(symbol,shares,date):
+    # autoBuy handles a buy from transaction
+    # asks ticker, prints price, then prompts for quantity and validates against bankroll
+    # returns logstring to write to transactions.log
+
+    buyTicker = symbol
+    priceOfStock = fetchSqlData.priceQuery(buyTicker, date, CONNECTION)
+    sharesToBuy = shares
+    priceToBuy = sharesToBuy * priceOfStock
+    # validate buy transaction
+    if priceToBuy > BANK - 9:
+        return False
+    # if buy is validated return string otherwise return none
+    BANK -= (priceToBuy + 9)
+    HOLDINGS += priceToBuy
+    STOCKS.append([buyTicker, priceOfStock, sharesToBuy])
+    returnString = "BUY " + buyTicker + " at " + ("%.2f" % priceOfStock) + " " + str(sharesToBuy) + " shares\n"
+    return returnString
+
+def autoSell(symbol, date):
+# autoSell handles sell from transaction
+# prints owned stocks, prompts for number corresponding to stock group
+# prompts quantity to sell, decides whether to update existing stock or remove if all sold
+# returns logString of sell
+    global DAY
+    global BANK
+    global HOLDINGS
+    global CONNECTION
+    printOwnedStocks()
+    print("\n")
+    sellTickerNum = int(input("Number of Ticker to Sell: "))
+    sellStock = STOCKS[sellTickerNum - 1]
+    sellTicker = sellStock[0]
+    sellShares = int(sellStock[2])
+    boughtPrice = float(sellStock[1])
+    with open("./data/"+sellTicker+".csv", 'r', newline='') as sellStockFile:
+        sellStockReader = csv.reader(sellStockFile)
+        sellStockReader.__next__()
+        sellStockRow = sellStockReader.__next__()
+    valueOfStock = float(sellStockRow[4])
+    print("\n" +sellTicker)
+    print(str(sellShares) + " shares")
+    print("Bought at: " +str(boughtPrice))
+    print("Current value: " +str(valueOfStock))
+    sharesToSell = int(input("\nNumber of Shares to Sell:"))
+    totalSoldValue = sharesToSell*valueOfStock
+    print("Sell "+ str(sharesToSell) + " for " + ("%.2f" % (totalSoldValue - 9)))
+    # validate transaction
+    validSell = False
+    if sharesToSell > sellShares:
+        print("**Insufficient Shares**")
+    else:
+        confirmSell = input("Sell Shares (y/n): ")
+        if confirmSell == "y" or confirmSell == "Y":
+            validSell = True
+    # if its valid return log string otherwise do nothing
+    if validSell:
+        if sharesToSell == sellShares:
+            STOCKS.pop(sellTickerNum - 1)
+        else:
+            sellStock[2] = sellShares - sharesToSell
+        saleRow = [DAY + 3, totalSoldValue - 9]
+        HOLDINGS -= totalSoldValue
+        with open("./broker/unresolvedSale.csv", 'a', newline='') as salesFile:
+            salesWriter = csv.writer(salesFile)
+            salesWriter.writerow(saleRow)
+        returnString = "SELL " + sellTicker + " at " + ("%.2f" % valueOfStock) + " " + str(sharesToSell) + " shares\n"
+        return returnString
+    else:
+        return None
+
 #================================================#
 #===================== MAIN =====================#
 #================================================#
@@ -264,4 +338,3 @@ while True:
             print("Total Holdings Value: " + ("%.2f" % HOLDINGS))
     except ValueError:
         print("Invalid Input")
-

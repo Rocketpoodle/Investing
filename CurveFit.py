@@ -2,22 +2,24 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import fetchSqlData
+import initDB
+import time
+import math
 from matplotlib.figure import Figure
 
-def getPointSet(file,size):
+def getPointSet(symbol,size):
     """
     getPointSet: generates points list from csv file
     file - String filename to read must be csv format
     size - Int size of range to select 0 returns all points
     return: list of points from csv file
     """
-    pointset = []
-    # file read loop
-    with open(file, 'r') as points:
-        tableRead = csv.reader(points)
-        tableRead.__next__()
-        for point in tableRead:
-            pointset.append(point)
+    DB = initDB.dbLogin()
+    start = time.time()
+    pointset = fetchSqlData.getPoints(symbol, ["Date, Open, High, Low, Close, Volume, AdjClose"], DB)
+    end = time.time()
+    print(end - start)
     # create range randomly if size is not 0
     if size > 0:
         r1 = random.randint(0,len(pointset) - 1)
@@ -79,7 +81,7 @@ def polyFit(pointset,order):
         i = len(pointset) - 1
         j = 0
         while i >= 0:
-            value += (float(pointset[i][4])*pow(j,r))
+            value += (float(pointset[j][4])*pow(j,r))
             i -= 1
             j += 1
         rowB.append(value)
@@ -98,8 +100,8 @@ def polyFit(pointset,order):
     newrs = 0
     average = 0
     while i > 0:
-        average += float(pointset[i][4])            
-        newrs += (pow(float(pointset[i][4]) - evalPoly(fitSet,j),2))
+        average += float(pointset[j][4])
+        newrs += (pow(float(pointset[j][4]) - evalPoly(fitSet,j),2))
         i -= 1
         j += 1
     wrs = newrs / (average / len(pointset))
@@ -120,7 +122,7 @@ def drawPoints(pointset,polyset):
     # generates plot sets using pointset and index
     while i >= 0:
         a.append(j)
-        b.append(float(pointset[i][4]))
+        b.append(float(pointset[j][4]))
         c.append(evalPoly(polyset,j))
         i -= 1
         j += 1
@@ -214,3 +216,99 @@ def getProfit(pointset,khi,klow):
         i -= 1
     percent = (profit/inVal)*100    
     return [profit,percent,crossing]
+
+def getScore(pointset, fit, kmeans):
+    deltaK = kmeans[0] - kmeans[1]
+    kbuy = (kmeans[1] - pointset[len(pointset) - 1][4]) / kmeans[1]
+    if kbuy < 0:
+        kbuy = 1 / (abs(kbuy) + 2)
+    else:
+        kbuy += 1
+    mean = getmean(pointset)
+    deltaK = deltaK / mean
+    wrs = fit[2]
+    fitDeriv = derivPoly(fit[0])
+    fitDeriv2 = derivPoly(fitDeriv)
+    size = len(pointset)
+    slope = (evalPoly(fitDeriv, size) + evalPoly(fitDeriv, size - 1) + evalPoly(fitDeriv, size - 2)) / 3
+    trueS = pointset[size - 1][4] - pointset[size - 2][4]
+    slope = (slope + trueS)*(slope - trueS) / 2
+    minArr = []
+    maxArr = []
+    minArr.append(evalPoly(fit[0],0))
+    minArr.append(evalPoly(fit[0],size - 1))
+    maxArr.append(evalPoly(fit[0],0))
+    maxArr.append(evalPoly(fit[0], size - 1))
+    for x in range(2,len(pointset)):
+        i1 = evalPoly(fit[0], (x-2))
+        i2 = evalPoly(fit[0], (x-1))
+        i3 = evalPoly(fit[0], x)
+        if i2 > i3 and i2 > i1:
+            maxArr.append(i2)
+        elif i2 < i3 and i2 < i1:
+            minArr.append(i2)
+        if pointset[x - 1][4] * 4 < pointset[x - 2][4]:
+            return [0]
+    maxr = max(maxArr) - min(maxArr)
+    minr = max(minArr) - min(minArr)
+    numM = len(minArr) + len(maxArr)
+    sumr = (mean * numM) / (minr + maxr)
+    score = sumr * kbuy * math.sqrt(mean)
+    return [score,deltaK,slope,numM,sumr,kbuy]
+"""
+stockPoints = getPointSet("AAPL", 252)
+score = 0
+bestscores = []
+best = stockPoints
+for runs in range (0,100):
+    try:
+        stockPoints = getPointSet("AAPL", 252)
+        secondary = stockPoints[192:252]
+        kmeans2 = getKmean(secondary)
+        fit2 = polyFit(secondary, 9)
+        kmeans = getKmean(stockPoints)
+        fit = polyFit(stockPoints, 9)
+        newscore = 4*(getScore(stockPoints, fit, kmeans)[0]) + (getScore(secondary, fit2, kmeans2)[0])
+        if newscore > score:
+            score = newscore
+            bestscores = getScore(stockPoints, fit, kmeans)
+            best = stockPoints
+    except:
+        pass
+print(bestscores)
+fit = polyFit(best, 9)
+drawPoints(best,fit[0])
+"""
+
+DB = initDB.dbLogin()
+stocksSet = fetchSqlData.getStockList(DB)
+startIndex = 0
+endIndex = 252
+score = 0
+best = 0
+bestscores = 0
+name = ""
+number = 0
+for stocks in stocksSet:
+    number += 1
+    symbol = stocks[0]
+    print(number, symbol)
+    stockPoints = fetchSqlData.getPoints(symbol, ["Date, Open, High, Low, Close, Volume, AdjClose"], DB)
+    stockPoints = stockPoints[0:252]
+    try:
+        secondary = stockPoints[-60:]
+        kmeans2 = getKmean(secondary)
+        fit2 = polyFit(secondary, 9)
+        kmeans = getKmean(stockPoints)
+        fit = polyFit(stockPoints, 9)
+        newscore = 4 * (getScore(stockPoints, fit, kmeans)[0]) + (getScore(secondary, fit2, kmeans2)[0])
+        if newscore > score:
+            score = newscore
+            bestscores = getScore(stockPoints, fit, kmeans)
+            best = stockPoints
+            name = symbol
+    except:
+        pass
+print(bestscores)
+fit = polyFit(best, 9)
+drawPoints(best,fit[0])

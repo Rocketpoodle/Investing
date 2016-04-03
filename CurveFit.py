@@ -214,13 +214,3 @@ def getProfit(pointset,khi,klow):
         i -= 1
     percent = (profit/inVal)*100    
     return [profit,percent,crossing]
-        
-
-stockPoints = getPointSet("data/AAPL.csv",30)
-kmeans = getKmean(stockPoints)
-profit = getProfit(stockPoints,kmeans[0],kmeans[1])
-print(profit)
-fit = polyFit(stockPoints,3)
-d1 = derivPoly(fit[0])
-d2 = derivPoly(d1)
-drawPoints(stockPoints,fit[0])

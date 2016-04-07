@@ -19,7 +19,7 @@ def getPointSet(symbol,size):
     start = time.time()
     pointset = fetchSqlData.getPoints(symbol, ["Date, AdjClose"], DB)
     end = time.time()
-    print(end - start)
+    #print(end - start)
     # create range randomly if size is not 0
     if size > 0:
         r1 = random.randint(0,len(pointset) - 1)
@@ -219,21 +219,21 @@ def getProfit(pointset,khi,klow):
 
 def getScore(pointset, fit, kmeans):
     # TODO: add commenting and make effecient
-    deltaK = kmeans[0] - kmeans[1]
+    #deltaK = kmeans[0] - kmeans[1]
     kbuy = (kmeans[1] - pointset[len(pointset) - 1][1]) / kmeans[1]
     if kbuy < 0:
         kbuy = 1 / (abs(kbuy) + 2)
     else:
         kbuy += 1
     mean = getmean(pointset)
-    deltaK = deltaK / mean
-    wrs = fit[2]
-    fitDeriv = derivPoly(fit[0])
-    fitDeriv2 = derivPoly(fitDeriv)
+    #deltaK = deltaK / mean
+    #wrs = fit[2]
+    #fitDeriv = derivPoly(fit[0])
+    #fitDeriv2 = derivPoly(fitDeriv)
     size = len(pointset)
-    slope = (evalPoly(fitDeriv, size) + evalPoly(fitDeriv, size - 1) + evalPoly(fitDeriv, size - 2)) / 3
-    trueS = pointset[size - 1][1] - pointset[size - 2][1]
-    slope = (slope + trueS)*(slope - trueS) / 2
+    #slope = (evalPoly(fitDeriv, size) + evalPoly(fitDeriv, size - 1) + evalPoly(fitDeriv, size - 2)) / 3
+    #trueS = pointset[size - 1][1] - pointset[size - 2][1]
+    #slope = (slope + trueS)*(slope - trueS) / 2
     minArr = []
     maxArr = []
     minArr.append(evalPoly(fit[0],0))
@@ -255,7 +255,7 @@ def getScore(pointset, fit, kmeans):
     numM = len(minArr) + len(maxArr)
     sumr = (mean * numM) / (minr + maxr)
     score = sumr * kbuy * math.sqrt(mean)
-    return [score,deltaK,slope,numM,sumr,kbuy]
+    return score#,deltaK,slope,numM,sumr,kbuy]
 
 def appendHigher(value, array, size):
     """

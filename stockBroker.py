@@ -206,6 +206,65 @@ def incrementDay(broker):
     # set new date for broker
     return fetchSqlData.setBrokerInfo(currInfo[0],currInfo[1],newDate,CONNECTION)
 
+def buyStock(broker, symbol, shares, connection):
+    """
+    buyStock: buys shares of the stock symbol for broker
+    broker - database return array of brokerinfo
+    symbol - string symbol of stock
+    shares - int number of shares to buy
+    connection - database connection object
+    return: boolean of success
+    """
+    currPrice = fetchSqlData.priceQuery(symbol, broker[2], connection)
+    newBank = (broker[1] - (shares * currPrice)) - 9
+    # check if bankroll is high enough
+    if newBank >= 0:
+        # check if sql transaction goes through
+        if fetchSqlData.sqlTransaction(broker[2], broker[0], "BUY", symbol, shares, currPrice, connection):
+            # update broker info
+            return fetchSqlData.setBrokerInfo(broker[0], newBank, broker[2], connection)
+    # return false if any checks fail
+    return False
+
+def sellStock(broker, symbol, shares, connection):
+    """
+    sellStock: sell shares of the stock symbol for broker
+    broker - database return array of brokerinfo
+    symbol - string symbol of stock
+    shares - int number of shares to sell
+    connection - database connection object
+    return: boolean of success
+    """
+    currPrice = fetchSqlData.priceQuery(symbol, broker[2], connection)
+    newBank = (broker[1] + (shares * currPrice)) - 9
+    newShares = fetchSqlData.queryOwnedStock(broker[0], symbol, connection) - shares
+    # check if number of shares is high enough
+    if newShares >= 0:
+        # check if sql transaction goes through
+        if fetchSqlData.sqlTransaction(broker[2], broker[0], "SELL", symbol, shares, currPrice, connection):
+            # update broker info
+            return fetchSqlData.setBrokerInfo(broker[0], newBank, broker[2], connection)
+    # return false if any checks fail
+    return False
+
+def valueStocks(broker, connection):
+    """
+    valueStocks: gets value for all stocks owned by broker
+    broker - database return array of brokerinfo
+    connection - database connection object
+    return: float value of all stocks
+    """
+    stockValue = 0.0
+    ownedList = fetchSqlData.queryAllOwned(broker[0], connection)
+    # for all stocks owned total value
+    for stocks in ownedList:
+        # get price for stock
+        stockPrice = fetchSqlData.priceQuery(stocks[0], broker[2], connection)
+        # increment value
+        stockValue += (stocks[1] * stockPrice)
+    # return total value
+    return stockValue
+
 #================================================#
 #===================== MAIN =====================#
 #================================================#

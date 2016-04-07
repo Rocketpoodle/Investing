@@ -1,5 +1,7 @@
 import initDB
 import psycopg2
+import time
+from datetime import date
 
 def getStockList(connection):
     """
@@ -41,32 +43,6 @@ def getPoints(symbol, columns, connection):
     DBcurr.close()
     connection.commit()
     return pointsList
-
-def getPointsDateRange(d1, d2, connection):
-    """
-    getPointsDateRange: gets points for dates between d1 and d2 from connection
-    d1, d2 - date objects
-    connection - database connection object
-    return: list of stock point lists
-    """
-    # query for all tickers within range
-    sqlString = "SELECT DISTINCT Symbol FROM StockPoints WHERE Date BETWEEN %s AND %s;"
-    sqlItem = [d1,d2]
-    DBcurr = connection.cursor()
-    DBcurr.execute(sqlString,sqlItem)
-    nameList = DBcurr.fetchall()
-    # get data for those tickers within that range
-    stockRanges = []
-    for names in nameList:
-        symbol = names[0]
-        sqlString = "SELECT * FROM StockPoints WHERE Symbol = %s AND Date BETWEEN %s AND %s ORDER BY Date;"
-        sqlItem = [symbol, d1, d2]
-        # get all points for the symbol and date range
-        DBcurr.execute(sqlString,sqlItem)
-        stockRanges.append(DBcurr.fetchall())
-    DBcurr.close()
-    connection.commit()
-    return stockRanges
 
 def priceQuery(symbol, date, connection):
     """
@@ -294,3 +270,32 @@ def dateExists(date, connection):
         return True
     else:
         return False
+
+def getPointsDateRange(d1, d2, symbol, columns, connection):
+    """
+    getPoints: gets the points from sql database that has the columns listed in the array columns
+    d1, d2 - date range to load points from
+    symbol - string symbol for stock
+    columns - array with strings of column names
+    connection - sql database connection object
+    return: array of points (points are themselves an array)
+    """
+    queryString = ""
+    onItem = 0
+    # add columns to select
+    for column in columns:
+        if onItem > 0:
+            queryString += ","
+        onItem += 1
+        queryString += column
+    sqlString = "SELECT " + queryString + " FROM StockPoints WHERE Symbol=%s AND DATE BETWEEN %s AND %s ORDER BY Date"
+    sqlItem = [symbol,d1,d2]
+    # open cursor
+    DBcurr = connection.cursor()
+    DBcurr.execute(sqlString, sqlItem)
+    pointsList = DBcurr.fetchall()
+    DBcurr.close()
+    connection.commit()
+    return pointsList
+
+

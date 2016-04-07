@@ -65,8 +65,10 @@ def creteBrokerTables(connection):
     DBcurr = connection.cursor()
     try:
         DBcurr.execute("CREATE TABLE StockBroker (Name varchar, Bank float, Date date);")
-        DBcurr.execute("CREATE TABLE OwnedStocks (Broker varchar, Symbol varchar, Shares int, Price float, PurchaseDate date);")
-        DBcurr.execute("CREATE TABLE TransLog (Broker varchar, Shares int, Price float, BuySell varchar);")
+        DBcurr.execute("CREATE TABLE OwnedStocks (Broker varchar, Symbol varchar, Shares int);")
+        DBcurr.execute("CREATE INDEX BrokerIndex ON OwnedStocks (Broker);")
+        DBcurr.execute("CREATE TABLE TransLog (Date date, Broker varchar, Shares int, Price float, BuySell varchar);")
+        DBcurr.execute("CREATE INDEX BrokerIndex ON TransLog (Broker);")
         connection.commit()
     except:
         connection.rollback()

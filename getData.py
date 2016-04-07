@@ -313,6 +313,7 @@ def updateStockPoints(connection):
         # find range and decide number to max at
         numStocks = len(updateList)
         dateDiff = today - minDate
+        newDate = minDate + timedelta(days=1)
         dayDiff = dateDiff.days
         # initialize for looped query
         nmax = int(250 / dayDiff)
@@ -321,16 +322,19 @@ def updateStockPoints(connection):
         requestString = "("
         errorString = ""
         for stocks in updateList:
-            requestString += "'" + stocks + "'"
+            requestString += "'" + stocks[0] + "'"
             n += 1
             t += 1
             if n == nmax or t == numStocks:
                 print(t)
                 requestString += ")"
                 # request json
-                command = urllib.request.quote(u'select * from yahoo.finance.historicaldata where symbol in ' + requestString)
+                command = urllib.request.quote(u'select * from yahoo.finance.historicaldata where symbol in ' + requestString + 'AND startDate=\'' + str(newDate) + '\' AND endDate=\'' + str(today) + '\'')
                 fetch = urllib.request.urlopen("http://query.yahooapis.com/v1/public/yql?q=" + command + "&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=").read()
-                fetch = json.loads(fetch.decode("utf-8"))["query"]["results"]["quote"]
+                try:
+                    fetch = json.loads(fetch.decode("utf-8"))["query"]["results"]["quote"]
+                except:
+                    return "Already up to Date"
                 # go through items and submit to sql server
                 sqlitems = []
                 sqlinsert = "INSERT INTO StockPoints (Symbol, Date, Open, High, Low, Close, Volume, AdjClose) VALUES "

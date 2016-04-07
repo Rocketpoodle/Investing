@@ -5,6 +5,7 @@ import getRatings
 import StockUpdater
 import ownedRatings
 import fetchSqlData
+from datetime import date,datetime,timedelta
 import initDB
 
 #================================================#
@@ -176,47 +177,6 @@ def updateStockData():
 # prints if sales were resolved
     didUpdate = StockUpdater.updateAllStocks()
 
-def incrementDay():
-# incrementDay updates day to day + 1 then checks for pending sales and resolves them if correct day
-    global DAY
-    global BANK
-    global UNRESOLVED
-    DAY += 1
-# update broker info file
-    with open("./broker/brokerInfo.csv", 'w', newline='') as brokerInfoFile:
-        brokerInfoWriter = csv.writer(brokerInfoFile)
-        brokerInfoWriter.writerow([BANK])
-        brokerInfoWriter.writerow([DAY])
-# create pending sale array
-    pendingSales = []
-    popIndecies = []
-    with open("./broker/unresolvedSale.csv", 'r', newline='') as unresolvedSalesFile:
-        unresolvedReader = csv.reader(unresolvedSalesFile)
-        for pending in unresolvedReader:
-            pendingSales.append(pending)
-    i = 0
-    for pendingElements in pendingSales:
-        if int(pendingElements[0]) == DAY:
-            popIndecies.append((i - len(popIndecies)))
-        i += 1
-    salesResolved = len(popIndecies)
-    moneyGained = 0
-    for indecies in popIndecies:
-        poppedSale = pendingSales.pop(indecies)
-        BANK += float(poppedSale[1])
-        moneyGained += float(poppedSale[1])
-    UNRESOLVED -= moneyGained
-    with open("./broker/brokerInfo.csv", 'w', newline='') as brokerInfoFile:
-        brokerInfoWriter = csv.writer(brokerInfoFile)
-        brokerInfoWriter.writerow([BANK])
-        brokerInfoWriter.writerow([DAY])
-    print(str(salesResolved) + " sale(s) resolved")
-    print(("%.2f" % moneyGained) + " dollars gained")
-    with open("./broker/unresolvedSale.csv", 'w', newline='') as unresolvedUpdatedFile:
-        unresolvedUpdatedWriter = csv.writer(unresolvedUpdatedFile)
-        for pendingLeft in pendingSales:
-            unresolvedUpdatedWriter.writerow(pendingLeft)
-
 def printLog():
 # printLog prints all entries in log file
     transactionCost = 0
@@ -226,75 +186,25 @@ def printLog():
             transactionCost += 9
     print("Broker Fees: " + str(transactionCost))
 
-def autoBuy(symbol,shares,date):
-    # autoBuy handles a buy from transaction
-    # asks ticker, prints price, then prompts for quantity and validates against bankroll
-    # returns logstring to write to transactions.log
-    buyTicker = symbol
-    priceOfStock = fetchSqlData.priceQuery(buyTicker, date, CONNECTION)
-    sharesToBuy = shares
-    priceToBuy = sharesToBuy * priceOfStock
-    # validate buy transaction
-    if priceToBuy > BANK - 9:
-        return False
-    # if buy is validated return string otherwise return none
-    BANK -= (priceToBuy + 9)
-    HOLDINGS += priceToBuy
-    STOCKS.append([buyTicker, priceOfStock, sharesToBuy])
-    returnString = "BUY " + buyTicker + " at " + ("%.2f" % priceOfStock) + " " + str(sharesToBuy) + " shares\n"
-    return returnString
-
-def autoSell(symbol, date):
-# autoSell handles sell from transaction
-# prints owned stocks, prompts for number corresponding to stock group
-# prompts quantity to sell, decides whether to update existing stock or remove if all sold
-# returns logString of sell
-    global DAY
-    global BANK
-    global HOLDINGS
-    global CONNECTION
-    printOwnedStocks()
-    print("\n")
-    sellTickerNum = int(input("Number of Ticker to Sell: "))
-    sellStock = STOCKS[sellTickerNum - 1]
-    sellTicker = sellStock[0]
-    sellShares = int(sellStock[2])
-    boughtPrice = float(sellStock[1])
-    with open("./data/"+sellTicker+".csv", 'r', newline='') as sellStockFile:
-        sellStockReader = csv.reader(sellStockFile)
-        sellStockReader.__next__()
-        sellStockRow = sellStockReader.__next__()
-    valueOfStock = float(sellStockRow[4])
-    print("\n" +sellTicker)
-    print(str(sellShares) + " shares")
-    print("Bought at: " +str(boughtPrice))
-    print("Current value: " +str(valueOfStock))
-    sharesToSell = int(input("\nNumber of Shares to Sell:"))
-    totalSoldValue = sharesToSell*valueOfStock
-    print("Sell "+ str(sharesToSell) + " for " + ("%.2f" % (totalSoldValue - 9)))
-    # validate transaction
-    validSell = False
-    if sharesToSell > sellShares:
-        print("**Insufficient Shares**")
-    else:
-        confirmSell = input("Sell Shares (y/n): ")
-        if confirmSell == "y" or confirmSell == "Y":
-            validSell = True
-    # if its valid return log string otherwise do nothing
-    if validSell:
-        if sharesToSell == sellShares:
-            STOCKS.pop(sellTickerNum - 1)
-        else:
-            sellStock[2] = sellShares - sharesToSell
-        saleRow = [DAY + 3, totalSoldValue - 9]
-        HOLDINGS -= totalSoldValue
-        with open("./broker/unresolvedSale.csv", 'a', newline='') as salesFile:
-            salesWriter = csv.writer(salesFile)
-            salesWriter.writerow(saleRow)
-        returnString = "SELL " + sellTicker + " at " + ("%.2f" % valueOfStock) + " " + str(sharesToSell) + " shares\n"
-        return returnString
-    else:
-        return None
+def incrementDay(broker):
+    """
+    incrementDay: increments day for broker
+    broker - string broker name to increment day for
+    return: True if day was incremented or False if end of range
+    """
+    # fetch current date
+    currInfo = fetchSqlData.fetchBrokerInfo(broker,CONNECTION)
+    date = currInfo[2]
+    newDate = date + timedelta(days=1)
+    today = datetime.today().date()
+    # run until next trading day
+    while not fetchSqlData.dateExists(newDate,CONNECTION):
+        # done if day is >= today
+        if newDate >= today:
+            return False
+        newDate = newDate + timedelta(days=1)
+    # set new date for broker
+    return fetchSqlData.setBrokerInfo(currInfo[0],currInfo[1],newDate,CONNECTION)
 
 #================================================#
 #===================== MAIN =====================#

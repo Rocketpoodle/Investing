@@ -17,7 +17,7 @@ def getPointSet(symbol,size):
     """
     DB = initDB.dbLogin()
     start = time.time()
-    pointset = fetchSqlData.getPoints(symbol, ["Date, Open, High, Low, Close, Volume, AdjClose"], DB)
+    pointset = fetchSqlData.getPoints(symbol, ["Date, AdjClose"], DB)
     end = time.time()
     print(end - start)
     # create range randomly if size is not 0
@@ -81,7 +81,7 @@ def polyFit(pointset,order):
         i = len(pointset) - 1
         j = 0
         while i >= 0:
-            value += (float(pointset[j][4])*pow(j,r))
+            value += (float(pointset[j][1])*pow(j,r))
             i -= 1
             j += 1
         rowB.append(value)
@@ -100,8 +100,8 @@ def polyFit(pointset,order):
     newrs = 0
     average = 0
     while i > 0:
-        average += float(pointset[j][4])
-        newrs += (pow(float(pointset[j][4]) - evalPoly(fitSet,j),2))
+        average += float(pointset[j][1])
+        newrs += (pow(float(pointset[j][1]) - evalPoly(fitSet,j),2))
         i -= 1
         j += 1
     wrs = newrs / (average / len(pointset))
@@ -122,7 +122,7 @@ def drawPoints(pointset,polyset):
     # generates plot sets using pointset and index
     while i >= 0:
         a.append(j)
-        b.append(float(pointset[j][4]))
+        b.append(float(pointset[j][1]))
         c.append(evalPoly(polyset,j))
         i -= 1
         j += 1
@@ -139,7 +139,7 @@ def getmean(pointset):
     total = 0
     range = len(pointset)
     for points in pointset:
-        total += float(points[4])
+        total += float(points[1])
     mean = total/range
     return mean
 
@@ -149,14 +149,14 @@ def getKmean(pointset):
     pointset - set of points to find k-means of
     return: meanh,meanl the high and low k-means respectively
     """
-    high = float(pointset[0][4])
-    low = float(pointset[0][4])
+    high = float(pointset[0][1])
+    low = float(pointset[0][1])
     # starts by arbitrarily setting high and low means to highest and lowest value
     for points in pointset:
-        if float(points[4]) < low:
-            low = float(points[4])
-        if float(points[4]) > high:
-            high = float(points[4])
+        if float(points[1]) < low:
+            low = float(points[1])
+        if float(points[1]) > high:
+            high = float(points[1])
     meanh = high
     meanl = low
     done = False
@@ -166,7 +166,7 @@ def getKmean(pointset):
         lowlist = []
         # divide points into high and low set
         for points in pointset:
-            value = float(points[4])
+            value = float(points[1])
             dlow = abs(value - meanh)
             dhi = abs(meanl - value)
             if dhi > dlow:
@@ -199,13 +199,13 @@ def getProfit(pointset,khi,klow):
     crossing = 1
     # step through points to see if its worth buying
     while i >= 0:
-        value = float(pointset[i][4])
+        value = float(pointset[i][1])
         if value < klow:
             # buy and then step to find sell point
             inVal += value
             crossing += 1
             for j in range(i,-1,-1):
-                newVal = float(pointset[j][4])
+                newVal = float(pointset[j][1])
                 # sell at sell pint or end of range
                 if newVal > khi or j == 0:
                     crossing += 1
@@ -218,8 +218,9 @@ def getProfit(pointset,khi,klow):
     return [profit,percent,crossing]
 
 def getScore(pointset, fit, kmeans):
+    # TODO: add commenting and make effecient
     deltaK = kmeans[0] - kmeans[1]
-    kbuy = (kmeans[1] - pointset[len(pointset) - 1][4]) / kmeans[1]
+    kbuy = (kmeans[1] - pointset[len(pointset) - 1][1]) / kmeans[1]
     if kbuy < 0:
         kbuy = 1 / (abs(kbuy) + 2)
     else:
@@ -231,7 +232,7 @@ def getScore(pointset, fit, kmeans):
     fitDeriv2 = derivPoly(fitDeriv)
     size = len(pointset)
     slope = (evalPoly(fitDeriv, size) + evalPoly(fitDeriv, size - 1) + evalPoly(fitDeriv, size - 2)) / 3
-    trueS = pointset[size - 1][4] - pointset[size - 2][4]
+    trueS = pointset[size - 1][1] - pointset[size - 2][1]
     slope = (slope + trueS)*(slope - trueS) / 2
     minArr = []
     maxArr = []
@@ -247,7 +248,7 @@ def getScore(pointset, fit, kmeans):
             maxArr.append(i2)
         elif i2 < i3 and i2 < i1:
             minArr.append(i2)
-        if pointset[x - 1][4] * 4 < pointset[x - 2][4]:
+        if pointset[x - 1][1] * 4 < pointset[x - 2][1]:
             return [0]
     maxr = max(maxArr) - min(maxArr)
     minr = max(minArr) - min(minArr)
@@ -255,6 +256,33 @@ def getScore(pointset, fit, kmeans):
     sumr = (mean * numM) / (minr + maxr)
     score = sumr * kbuy * math.sqrt(mean)
     return [score,deltaK,slope,numM,sumr,kbuy]
+
+def appendHigher(value, array, size):
+    """
+    appendHigher: inserts value into array if it is large enough
+    value - value to insert
+    array - array to insert into
+    size - max size of array
+    return: no return, instead array is modified to have the new value in its corresponding position
+    """
+    # if array is empty append the value
+    if not array:
+        array.append(value)
+    # otherwise check where to append value
+    else:
+        for x in range(0,len(array) + 1):
+            # check each element to see if value is higher
+            try:
+                if value > array[x]:
+                    # insert if it is higher
+                    array.insert(x, value)
+                    break
+            # if index is above length of array
+            except:
+                array.append(value)
+        # get rid of all values past desired size
+        while len(array) > size:
+            array.pop()
 """
 stockPoints = getPointSet("AAPL", 252)
 score = 0
@@ -279,7 +307,7 @@ print(bestscores)
 fit = polyFit(best, 9)
 drawPoints(best,fit[0])
 """
-
+"""
 DB = initDB.dbLogin()
 stocksSet = fetchSqlData.getStockList(DB)
 startIndex = 0
@@ -293,7 +321,7 @@ for stocks in stocksSet:
     number += 1
     symbol = stocks[0]
     print(number, symbol)
-    stockPoints = fetchSqlData.getPoints(symbol, ["Date, Open, High, Low, Close, Volume, AdjClose"], DB)
+    stockPoints = fetchSqlData.getPoints(symbol, ["Date, AdjClose"], DB)
     stockPoints = stockPoints[0:252]
     try:
         secondary = stockPoints[-60:]
@@ -309,6 +337,8 @@ for stocks in stocksSet:
             name = symbol
     except:
         pass
+
 print(bestscores)
 fit = polyFit(best, 9)
-drawPoints(best,fit[0])
+drawPoints(best, fit[0])
+"""

@@ -1,4 +1,5 @@
 import psycopg2
+import datetime
 
 def dbLogin():
     """
@@ -56,7 +57,7 @@ def dropTables(connection):
     DBcurr.close()
     return success
 
-def creteBrokerTables(connection):
+def createBrokerTables(connection):
     """
     createBrokerTable: creates table to keep track of broker info
     connection - database connection object
@@ -64,11 +65,14 @@ def creteBrokerTables(connection):
     """
     DBcurr = connection.cursor()
     try:
+        print("1")
         DBcurr.execute("CREATE TABLE StockBroker (Name varchar, Bank float, Date date);")
-        DBcurr.execute("CREATE TABLE OwnedStocks (Broker varchar, Symbol varchar, Shares int);")
+        DBcurr.execute("CREATE TABLE OwnedStocks (Broker varchar, Symbol varchar, Shares integer);")
+        print("2")
         DBcurr.execute("CREATE INDEX BrokerIndex ON OwnedStocks (Broker);")
-        DBcurr.execute("CREATE TABLE TransLog (Date date, Broker varchar, Shares int, Price float, BuySell varchar);")
-        DBcurr.execute("CREATE INDEX BrokerIndex ON TransLog (Broker);")
+        DBcurr.execute("CREATE TABLE TransLog (Date date, Broker varchar, Symbol varchar, Shares integer, Price float, BuySell varchar);")
+        print("3")
+        DBcurr.execute("CREATE INDEX BrokerLogIndex ON TransLog (Broker);")
         connection.commit()
     except:
         connection.rollback()
@@ -114,3 +118,8 @@ def createBroker(name, bank, date, connection):
         return False
     DBcurr.close()
     return True
+
+#conn = dbLogin()
+#dropBrokerTables(conn)
+#createBrokerTables(conn)
+#createBroker("Broker1", 100000.0, datetime.date(1990, 1, 1), conn)

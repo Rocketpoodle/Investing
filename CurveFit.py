@@ -95,17 +95,7 @@ def polyFit(pointset,order):
     for var in range(order, -1, -1):
         fitSet.append(float(matX[var][0]))
     # determine r squared value for reference
-    i = len(pointset) - 1
-    j = 0
-    newrs = 0
-    average = 0
-    while i > 0:
-        average += float(pointset[j][1])
-        newrs += (pow(float(pointset[j][1]) - evalPoly(fitSet,j),2))
-        i -= 1
-        j += 1
-    wrs = newrs / (average / len(pointset))
-    return [fitSet,newrs,wrs]
+    return fitSet
 
 def drawPoints(pointset,polyset):
     """
@@ -217,33 +207,35 @@ def getProfit(pointset,khi,klow):
     percent = (profit/inVal)*100    
     return [profit,percent,crossing]
 
-def getScore(pointset, fit, kmeans):
-    # TODO: add commenting and make effecient
-    #deltaK = kmeans[0] - kmeans[1]
+def getScore(pointset):
+    """
+    getScore: gets the score for a given pointset
+    pointset - points to score
+    return: float score for stock
+    """
+    # get kmeans and fit
+    kmeans = getKmean(pointset)
+    fit = polyFit(pointset,9)
+    # scale based upon kbuy value
     kbuy = (kmeans[1] - pointset[len(pointset) - 1][1]) / kmeans[1]
     if kbuy < 0:
         kbuy = 1 / (abs(kbuy) + 2)
     else:
         kbuy += 1
+    # get mean and size of set
     mean = getmean(pointset)
-    #deltaK = deltaK / mean
-    #wrs = fit[2]
-    #fitDeriv = derivPoly(fit[0])
-    #fitDeriv2 = derivPoly(fitDeriv)
     size = len(pointset)
-    #slope = (evalPoly(fitDeriv, size) + evalPoly(fitDeriv, size - 1) + evalPoly(fitDeriv, size - 2)) / 3
-    #trueS = pointset[size - 1][1] - pointset[size - 2][1]
-    #slope = (slope + trueS)*(slope - trueS) / 2
+    # determine cyclicality looking at min/max
     minArr = []
     maxArr = []
-    minArr.append(evalPoly(fit[0],0))
-    minArr.append(evalPoly(fit[0],size - 1))
-    maxArr.append(evalPoly(fit[0],0))
-    maxArr.append(evalPoly(fit[0], size - 1))
+    minArr.append(evalPoly(fit,0))
+    minArr.append(evalPoly(fit,size - 1))
+    maxArr.append(evalPoly(fit,0))
+    maxArr.append(evalPoly(fit, size - 1))
     for x in range(2,len(pointset)):
-        i1 = evalPoly(fit[0], (x-2))
-        i2 = evalPoly(fit[0], (x-1))
-        i3 = evalPoly(fit[0], x)
+        i1 = evalPoly(fit, (x-2))
+        i2 = evalPoly(fit, (x-1))
+        i3 = evalPoly(fit, x)
         if i2 > i3 and i2 > i1:
             maxArr.append(i2)
         elif i2 < i3 and i2 < i1:
@@ -254,8 +246,9 @@ def getScore(pointset, fit, kmeans):
     minr = max(minArr) - min(minArr)
     numM = len(minArr) + len(maxArr)
     sumr = (mean * numM) / (minr + maxr)
+    # calc final score
     score = sumr * kbuy * math.sqrt(mean)
-    return score#,deltaK,slope,numM,sumr,kbuy]
+    return [score, kmeans[1]]
 
 def appendHigher(value, array, size):
     """
@@ -273,7 +266,7 @@ def appendHigher(value, array, size):
         for x in range(0,len(array) + 1):
             # check each element to see if value is higher
             try:
-                if value > array[x]:
+                if value[1] > array[x][1]:
                     # insert if it is higher
                     array.insert(x, value)
                     break
@@ -283,62 +276,21 @@ def appendHigher(value, array, size):
         # get rid of all values past desired size
         while len(array) > size:
             array.pop()
-"""
-stockPoints = getPointSet("AAPL", 252)
-score = 0
-bestscores = []
-best = stockPoints
-for runs in range (0,100):
-    try:
-        stockPoints = getPointSet("AAPL", 252)
-        secondary = stockPoints[192:252]
-        kmeans2 = getKmean(secondary)
-        fit2 = polyFit(secondary, 9)
-        kmeans = getKmean(stockPoints)
-        fit = polyFit(stockPoints, 9)
-        newscore = 4*(getScore(stockPoints, fit, kmeans)[0]) + (getScore(secondary, fit2, kmeans2)[0])
-        if newscore > score:
-            score = newscore
-            bestscores = getScore(stockPoints, fit, kmeans)
-            best = stockPoints
-    except:
-        pass
-print(bestscores)
-fit = polyFit(best, 9)
-drawPoints(best,fit[0])
-"""
-"""
-DB = initDB.dbLogin()
-stocksSet = fetchSqlData.getStockList(DB)
-startIndex = 0
-endIndex = 252
-score = 0
-best = 0
-bestscores = 0
-name = ""
-number = 0
-for stocks in stocksSet:
-    number += 1
-    symbol = stocks[0]
-    print(number, symbol)
-    stockPoints = fetchSqlData.getPoints(symbol, ["Date, AdjClose"], DB)
-    stockPoints = stockPoints[0:252]
-    try:
-        secondary = stockPoints[-60:]
-        kmeans2 = getKmean(secondary)
-        fit2 = polyFit(secondary, 9)
-        kmeans = getKmean(stockPoints)
-        fit = polyFit(stockPoints, 9)
-        newscore = 4 * (getScore(stockPoints, fit, kmeans)[0]) + (getScore(secondary, fit2, kmeans2)[0])
-        if newscore > score:
-            score = newscore
-            bestscores = getScore(stockPoints, fit, kmeans)
-            best = stockPoints
-            name = symbol
-    except:
-        pass
 
-print(bestscores)
-fit = polyFit(best, 9)
-drawPoints(best, fit[0])
-"""
+def compositeScore(pointSet, secondSet):
+    """
+    compositeScore: gets composite score using full and quarter values
+    pointSet - set of points for full range
+    secondSet - quarter pointset
+    return: float composite score
+    """
+    try:
+        fullScore = getScore(pointSet)
+        secondScore = getScore(secondSet)
+        compScore = (1 * fullScore[0]) + secondScore[0]
+    except:
+        compScore = 0
+        secondScore[1] = 0
+        fullScore[1] = 0
+    return [compScore, fullScore[1], secondScore[1]]
+

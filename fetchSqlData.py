@@ -51,7 +51,7 @@ def priceQuery(symbol, date, connection):
     connection - sql database connection object
     return: integer stock price
     """
-    sqlString = "SELECT Close FROM StockPoints WHERE Symbol=%s AND Date=%s;"
+    sqlString = "SELECT AdjClose FROM StockPoints WHERE Symbol=%s AND Date=%s;"
     sqlItem = [symbol, date]
     DBcurr = connection.cursor()
     DBcurr.execute(sqlString,sqlItem)
@@ -78,9 +78,10 @@ def fetchBrokerInfo(name, connection):
         DBcurr = connection.cursor()
         DBcurr.execute(sqlString,sqlItems)
         brokerInfo = DBcurr.fetchone()
-        connection.commit()
         DBcurr.close()
+        connection.commit()
     except:
+        connection.rollback()
         pass
     return brokerInfo
 
@@ -113,7 +114,28 @@ def queryAllOwned(name, connection):
     connection - database connection object
     return: list of symbol,shares for all owned stocks
     """
-    sqlString = "SELECT Symbol,Shares FROM OwnedStocks WHERE Name=%s;"
+    sqlString = "SELECT Symbol,Shares FROM OwnedStocks WHERE Broker=%s;"
+    sqlItems = [name]
+    ownedStocks = []
+    # execute command
+    try:
+        DBcurr = connection.cursor()
+        DBcurr.execute(sqlString,sqlItems)
+        ownedStocks = DBcurr.fetchall()
+        connection.commit()
+        DBcurr.close()
+    except:
+        pass
+    return ownedStocks
+
+def queryLog(name, connection):
+    """
+    queryLog: queries for all log entries for name
+    name - string name of broker
+    connection - database connection object
+    return: list of symbol,shares for all owned stocks
+    """
+    sqlString = "SELECT * FROM TransLog WHERE Broker=%s;"
     sqlItems = [name]
     ownedStocks = []
     # execute command
@@ -135,7 +157,7 @@ def queryOwnedStock(name, symbol, connection):
     connection - database connection object
     return: total shares owned
     """
-    sqlString = "SELECT Shares FROM OwnedStocks WHERE Name=%s,Symbol=%s;"
+    sqlString = "SELECT Shares FROM OwnedStocks WHERE Broker=%s AND Symbol=%s;"
     sqlItems = [name, symbol]
     owned = 0
     # execute command
@@ -156,7 +178,7 @@ def clearTransLog(name, connection):
     connection - database connection object
     return: boolean of success
     """
-    sqlString = "DELETE FROM TransLog WHERE Name=%s;"
+    sqlString = "DELETE FROM TransLog WHERE Broker=%s;"
     sqlItems = [name]
     # execute command
     try:
@@ -176,7 +198,7 @@ def clearOwnedStocks(name, connection):
     connection - database connection object
     return: boolean of success
     """
-    sqlString = "DELETE FROM OwnedStocks WHERE Name=%s;"
+    sqlString = "DELETE FROM OwnedStocks WHERE Broker=%s;"
     sqlItems = [name]
     # execute command
     try:
@@ -203,8 +225,8 @@ def sqlTransaction(date, name, buysell, symbol, shares, price, connection):
     tranString = ""
     tranItems = []
     # initialize log string and items
-    logString = "INSERT INTO TransLog (Date, Name, BuySell, Symbol, Shares, Price) VALUES (%s,%s,%s,%s,%s,%s);"
-    logItems = [date, name, buysell, symbol, shares, price]
+    logString = "INSERT INTO TransLog (Date, Broker, Symbol, Shares, Price, BuySell) VALUES (%s,%s,%s,%s,%s,%s);"
+    logItems = [date, name, symbol, shares, price, buysell]
     # check how much of the stock is owned
     owned = queryOwnedStock(name, symbol, connection)
     # buy transaction
@@ -215,7 +237,10 @@ def sqlTransaction(date, name, buysell, symbol, shares, price, connection):
             tranItems = [name, symbol, shares]
         # if some are owned
         else:
-            transString = "UPDATE OwnedStocks SET Shares=%s WHERE Broker=%s,Symbol=%s;"
+            ownedVal = owned * price
+            if ownedVal > 10000:
+                return False
+            tranString = "UPDATE OwnedStocks SET Shares=%s WHERE Broker=%s AND Symbol=%s;"
             newShares = owned + shares
             tranItems = [newShares, name, symbol]
     # sell transaction
@@ -225,25 +250,26 @@ def sqlTransaction(date, name, buysell, symbol, shares, price, connection):
             return False
         # delete row if all shares sold
         elif shares == owned:
-            tranString = "DELETE FROM OwnedStocks WHERE Broker=%s,Symbol=%s;"
+            tranString = "DELETE FROM OwnedStocks WHERE Broker=%s AND Symbol=%s;"
             tranItems = [name, symbol]
         # update row with remaining shares
         elif shares < owned:
             newShares = owned - shares
-            tranString = "UPDATE OwnedStocks SET Shares=%s WHERE Broker=%s,Symbol=%s;"
+            tranString = "UPDATE OwnedStocks SET Shares=%s WHERE Broker=%s AND Symbol=%s;"
             tranItems = [newShares, name, symbol]
     # invalid transaction
     else:
         return False
-    try:
+    #try:
         # sql executions
-        DBcurr = connection.cursor()
-        DBcurr.execute(tranString,tranItems)
-        DBcurr.execute(logString,logItems)
-        connection.commit()
-        DBcurr.close()
-    except:
-        return False
+    DBcurr = connection.cursor()
+    DBcurr.execute(tranString,tranItems)
+    connection.commit()
+    DBcurr.execute(logString,logItems)
+    connection.commit()
+    DBcurr.close()
+    #except:
+        #return False
     return True
 
 def dateExists(date, connection):
@@ -253,7 +279,7 @@ def dateExists(date, connection):
     connection - database connection object
     return: boolean if date exists
     """
-    sqlString = "Select FIRST(Date) FROM StockPoints WHERE Date=%s;"
+    sqlString = "Select MAX(Date) FROM StockPoints WHERE Date=%s;"
     sqlItems = [date]
     # execute command
     try:
@@ -267,6 +293,31 @@ def dateExists(date, connection):
         return False
     # check if date exists
     if dateNow:
+        return True
+    else:
+        return False
+
+def stockDateExists(date, symbol, connection):
+    """
+    dateExists: queries for points on date to see if it exists
+    date - date object to query
+    connection - database connection object
+    return: boolean if date exists
+    """
+    sqlString = "Select MAX(Date) FROM StockPoints WHERE Date=%s AND Symbol=%s;"
+    sqlItems = [date, symbol]
+    # execute command
+    try:
+        DBcurr = connection.cursor()
+        DBcurr.execute(sqlString, sqlItems)
+        dateNow = DBcurr.fetchone()
+        connection.commit()
+        DBcurr.close()
+    except:
+        connection.rollback()
+        return False
+    # check if date exists
+    if dateNow[0]:
         return True
     else:
         return False

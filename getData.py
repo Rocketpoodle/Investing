@@ -392,3 +392,6 @@ def updateStockPoints(connection):
         return "Success"
     else:
         return errorString
+
+conn = initDB.dbLogin()
+print(updateStockPoints(conn))

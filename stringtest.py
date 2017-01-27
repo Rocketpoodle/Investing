@@ -1,5 +1,6 @@
 __author__ = 'Austin'
+from Polynomial import *
 
-import re
-string = '5/24-2005'
-print(re.sub('[/-]','',string))
+poly = Polynomial([3,2,1])
+dpoly = poly.differentiate()
+print(poly)

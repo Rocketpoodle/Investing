@@ -6,8 +6,13 @@ class Polynomial(object):
     degree = 0
 
     def __init__(self, coeff = []):
-        self.coefficients = coeff
-        self.degree = len(coeff)
+        for x in range(0, len(coeff)):
+            if coeff[x] != 0:
+                break
+        self.coefficients = coeff[x:]
+        self.degree = len(coeff) - x
+        if self.degree == 0:
+            raise ValueError["Empty Polynomial"]
 
     def evaluate(self, x):
         """evaluates polynomial at x using Horners factorizaiton"""

@@ -11,8 +11,8 @@
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
-    <InterpreterVersion />
+    <InterpreterId>{7cfe37c4-5dd8-42e5-909b-075551aa60a6}</InterpreterId>
+    <InterpreterVersion>3.5</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
@@ -24,6 +24,9 @@
     <Compile Include="BuildFormulaIterative.py" />
     <Compile Include="Companystripper.py" />
     <Compile Include="CurveFit.py" />
+    <Compile Include="DataSet.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="fetchSqlData.py" />
     <Compile Include="GetCVS.py" />
     <Compile Include="getData.py" />
@@ -38,6 +41,9 @@
     <Compile Include="StockMarketClasses.py" />
     <Compile Include="StockUpdater.py" />
     <Compile Include="stringtest.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{7cfe37c4-5dd8-42e5-909b-075551aa60a6}\3.5" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

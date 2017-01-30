@@ -145,6 +145,18 @@ class DataSet(object):
             mat = mat.transpose()
         return mat
 
+    def scaleDataVariable(self, varName, start = 0, end = 1):
+        """scales vales to range from start to end"""
+        index = self.dataNames.index(varName)
+        scale = end - start
+        if self.lenData == 0 or scale == 0: # check for empty data or 0 scale
+            return -1
+        minval, maxval = self.getMinMax(varName)
+        for x in range(0,self.lenData): # scale values
+            newval = start + (self.data[index][x] / (maxval - minval))*scale
+            self.data[index][x] = newval
+        return 0
+
     def plotData(self, independant, dependant):
         """plots data of dataset, specifying name of independant variable and dependant variable(s).
         can specify plot arguments"""
@@ -218,7 +230,7 @@ class DataSet(object):
             maxvalue = 0
             maxpoly = None
             maxindex = 0
-            for i in range(0,len(polyArr)):
+            for i in range(0,len(polyArr)): # find lowest lastdiff / diff value
                 if polyArr[i][2] > maxvalue:
                     maxvalue = polyArr[i][2]
                     maxindex = i
@@ -263,3 +275,79 @@ class DataSet(object):
                     dataStr += "\t\t"
                 dataStr += "\n"
         return dataStr
+
+    def getStats(self, varName):
+        """returns mean and standard deviation for a specific variable"""
+        index = self.dataNames.index(varName) # get variable index
+        return np.mean(self.data[index]), np.std(self.data[index]) # get mean and stddev
+
+    def getMinMax(self, varName):
+        """returns min and max values for a specific variable"""
+        index = self.dataNames.index(varName) # get variable index
+        if self.lenData > 0:
+            minval = self.data[index][0]
+            maxval = self.data[index][0]
+            for x in range(1,self.lenData): # get max min
+                newval = self.data[index][x]
+                if newval < minval: # check if new min
+                    minval = newval
+                elif newval > maxval: # check if new max
+                    maxval = newval
+            return minval, maxval
+
+    def getKmeans(self, varName, number = 2, maxIters = 1000):
+        """gets a number of kmeans (default is 2) for a specific variable"""
+        if number < 2:
+            raise ValueError("can't have less than 2 kmeans")
+        minval, maxval = self.getMinMax(varName) # get min max
+        mean, stddev = self.getStats(varName) # get mean and stddev
+        kmeans = [minval]
+        if number > 2: # generate initial kmeans
+            newKmean = minval   
+            scale = (maxval - minval) / (number - 1)
+            for x in range(1, number - 1):
+                newKmean += scale
+                kmeans.append(newKmean)
+        kmeans.append(maxval)
+        # iterate until complete
+        dataArr = self.data[self.dataNames.index(varName)] # get data to use
+        for x in range(0, maxIters):
+            print(kmeans)
+            sortedValues = []
+            for i in range(0, number):
+                sortedValues.append([]) # create empty sorted array
+            for values in dataArr: # sort elements
+                sortIndex = 0
+                minDist = abs(values - kmeans[sortIndex])
+                for i in range(1, number): # check all kemans
+                    newDist = abs(values - kmeans[i])
+                    if newDist <= minDist: # check if shorter distance to kmean
+                        sortIndex = i
+                        minDist = newDist
+                sortedValues[sortIndex].append(values) # append value to correct place
+            # create new kmeans
+            newKmeans = [] 
+            for i in range(0, number):
+                newKmean = 0
+                for values in sortedValues[i]: # sum values near kmean
+                    newKmean += values
+                length = len(sortedValues[i])
+                if  length > 0:
+                    newKmeans.append(newKmean / length) # append new kmean
+                else:
+                    number -= 1
+            # check for change in kmeans
+            changed = False
+            if len(kmeans) == len(newKmeans): # check if a kmean dissapeared
+                for i in range(0, number):
+                    if kmeans[i] != newKmeans[i]: # check for individual change
+                        changed = True
+                        break
+                if changed == False: # check if no change occorred
+                    break
+            kmeans = newKmeans # update kmeans
+        # finalization
+        finalKmeans = []
+        for i in range(0,number):
+            finalKmeans.append((kmeans[i],np.std(sortedValues[i]))) # tuple (kmean, stddev of kmean)
+        return finalKmeans

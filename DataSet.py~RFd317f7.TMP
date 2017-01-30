@@ -175,12 +175,9 @@ class DataSet(object):
         AT.append(currArr)
         rSquared = 0
         lastrsq = 0
+        lastrSquared = 0
         poly = None
         lastpoly = None
-        lasteval = None
-        diff = 1
-        eval = [0] * self.lenData
-        polyArr = []
         if degree == None: # check if degree is given
             degree = 15 # past 15 error is too high
             if qFactor == None: # only need qFactor if degree is not specified
@@ -207,18 +204,9 @@ class DataSet(object):
                     sfi += val
                 lastrsq = rSquared
                 rSquared = 1 - (sfi / syi) # rsquared value
-                lastdiff = diff
-                diff = 1-(lastrsq/ rSquared)
-                polyArr.append((poly,rSquared,diff/lastdiff))
-                maxvalue = 0
-                maxpoly = None
-                if (lastrsq > rSquared):
-                    for i in range(0,len(polyArr)):
-                        if polyArr[i][2] > maxvalue:
-                            maxvalue = polyArr[i][2]
-                            maxindex = i
-                    return polyArr[maxindex][0], polyArr[maxindex][1]
-                    return lastpoly, lastrsq
+                print(rSquared, (1 - (lastrsq / rSquared)), ((rSquared/x)*(rSquared / x)))
+                if ((1 - (lastrsq / rSquared)) < ((rSquared/x)*(rSquared / x))):
+                    return lastpoly, lastrsq # return if qFactor reached
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data
                 AT.append(currArr) # append to AT 2D matrix
             return poly, rSquared # return last polynomial if degree is reached

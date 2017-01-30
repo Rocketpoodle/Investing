@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ee4b44bd-2177-4000-83b7-d35d3316edd0}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>BuildFormulaIterative.py</StartupFile>
+    <StartupFile>stringtest.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>

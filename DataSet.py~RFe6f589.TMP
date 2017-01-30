@@ -175,12 +175,12 @@ class DataSet(object):
         AT.append(currArr)
         rSquared = 0
         lastrsq = 0
+        lastrSquared = 0
         poly = None
         lastpoly = None
         lasteval = None
-        diff = 1
+        diffsq = 0
         eval = [0] * self.lenData
-        polyArr = []
         if degree == None: # check if degree is given
             degree = 15 # past 15 error is too high
             if qFactor == None: # only need qFactor if degree is not specified
@@ -201,24 +201,20 @@ class DataSet(object):
                 poly = Polynomial(coeffs) # create polynomial 
                 eval = poly.evaluate(self.data[indepIndex]) # get fi
                 sfi = 0
+                diff = 0
                 for i in range(0, self.lenData): # get sum of residuals
                     val = yval[i] - eval[i]
                     val *= val
                     sfi += val
+                    val2 = eval[i] - lasteval[i]
+                    val2 *= val2
+                    diff += val2
+                diffsq = (diff / syi)
                 lastrsq = rSquared
                 rSquared = 1 - (sfi / syi) # rsquared value
-                lastdiff = diff
-                diff = 1-(lastrsq/ rSquared)
-                polyArr.append((poly,rSquared,diff/lastdiff))
-                maxvalue = 0
-                maxpoly = None
-                if (lastrsq > rSquared):
-                    for i in range(0,len(polyArr)):
-                        if polyArr[i][2] > maxvalue:
-                            maxvalue = polyArr[i][2]
-                            maxindex = i
-                    return polyArr[maxindex][0], polyArr[maxindex][1]
-                    return lastpoly, lastrsq
+                print(rSquared, (1 - (lastrsq / rSquared)), diffsq)
+                if ((1 - (lastrsq / rSquared)) < diffsq):
+                    return poly, rSquared # return if qFactor reached
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data
                 AT.append(currArr) # append to AT 2D matrix
             return poly, rSquared # return last polynomial if degree is reached

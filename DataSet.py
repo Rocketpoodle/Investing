@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from Polynomial import *
+import math
 
 class DataSet(object):
     """Data set is an object that holds datasets
@@ -182,7 +183,7 @@ class DataSet(object):
         eval = [0] * self.lenData
         polyArr = []
         if degree == None: # check if degree is given
-            degree = 15 # past 15 error is too high
+            degree = self.lenData - 1# past 15 error is too high
             if qFactor == None: # only need qFactor if degree is not specified
                 qFactor = 0.15 # arbitrary choice
             # iterative solution
@@ -209,19 +210,19 @@ class DataSet(object):
                 rSquared = 1 - (sfi / syi) # rsquared value
                 lastdiff = diff
                 diff = 1-(lastrsq/ rSquared)
-                polyArr.append((poly,rSquared,diff/lastdiff))
-                maxvalue = 0
-                maxpoly = None
+                polyArr.append((poly,rSquared,lastdiff/diff))
                 if (lastrsq > rSquared):
-                    for i in range(0,len(polyArr)):
-                        if polyArr[i][2] > maxvalue:
-                            maxvalue = polyArr[i][2]
-                            maxindex = i
-                    return polyArr[maxindex][0], polyArr[maxindex][1]
-                    return lastpoly, lastrsq
+                    break
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data
                 AT.append(currArr) # append to AT 2D matrix
-            return poly, rSquared # return last polynomial if degree is reached
+            maxvalue = 0
+            maxpoly = None
+            maxindex = 0
+            for i in range(0,len(polyArr)):
+                if polyArr[i][2] > maxvalue:
+                    maxvalue = polyArr[i][2]
+                    maxindex = i
+            return polyArr[maxindex][0], polyArr[maxindex][1]
 
         else: # definite degree solution
             for x in range(1,degree):

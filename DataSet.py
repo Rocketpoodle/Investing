@@ -150,19 +150,34 @@ class DataSet(object):
         index = self.dataNames.index(varName)
         scale = end - start
         if self.lenData == 0 or scale == 0: # check for empty data or 0 scale
-            return -1
+            return None
         minval, maxval = self.getMinMax(varName)
+        scale *= (maxval - minval)
+        start -= minval
         for x in range(0,self.lenData): # scale values
-            newval = start + (self.data[index][x] / (maxval - minval))*scale
+            newval = (start + self.data[index][x]) / scale
             self.data[index][x] = newval
-        return 0
+        return scale, start
 
-    def plotData(self, independant, dependant, blocking = True):
+    def plotData(self, independant, dependant, iscale = 1, ioffset = 0, dscale = None, doff = None, blocking = True):
         """plots data of dataset, specifying name of independant variable and dependant variable(s).
         can specify plot arguments"""
-        xVals = self.data[self.dataNames.index(independant)]
+        scalar = [1] * self.numVars
+        offset = [0] * self.numVars
+        if dscale != None: # check for scale
+            if len(dscale) != len(dependant):
+                raise ValueError("incorrect size of scale array")
+            for names in dependant: # copy scale and offset values
+                scalar[self.dataNames.index(names)] = dscale[dependant.index(names)]
+        if doff != None: # check for scale
+            if len(doff) != len(dependant):
+                raise ValueError("incorrect size of doff array")
+            for names in dependant: # copy offset values
+                offset[self.dataNames.index(names)] = doff[dependant.index(names)]
+        xVals = [(x*iscale) + ioffset for x in self.data[self.dataNames.index(independant)]]
         for names in dependant: # plot data according to specification
-            plt.plot(xVals,self.data[self.dataNames.index(names)])
+            index = self.dataNames.index(names)
+            plt.plot(xVals,[(x*scalar[index]) - offset[index] for x in self.data[index]])
         plt.show(block=blocking) # show plot
 
     def curveFit(self, independant, dependant, degree = None):
@@ -170,6 +185,8 @@ class DataSet(object):
         If no degree is specified it finds the best degree using quality factor"""
         depIndex = self.dataNames.index(dependant) # get index for dependant variable
         indepIndex = self.dataNames.index(independant) # get index for independant variable
+        if len(set(self.data[indepIndex])) != self.lenData: # duplicate independant values
+               raise ValueError("Independant variable set contains duplicates")
         yval = self.data[depIndex].copy() # get yi
         ymean = 0
         for x in range(0, self.lenData):

@@ -165,7 +165,7 @@ class DataSet(object):
             plt.plot(xVals,self.data[self.dataNames.index(names)])
         plt.show() # show plot
 
-    def curveFit(self, dependant, independant, degree = None, qFactor = None):
+    def curveFit(self, independant, dependant, degree = None):
         """returns curve fit of requested data. Can specify degree or quality factor.
         If no degree is specified it finds the best degree using quality factor"""
         depIndex = self.dataNames.index(dependant) # get index for dependant variable
@@ -196,8 +196,6 @@ class DataSet(object):
         polyArr = []
         if degree == None: # check if degree is given
             degree = self.lenData - 1# past 15 error is too high
-            if qFactor == None: # only need qFactor if degree is not specified
-                qFactor = 0.15 # arbitrary choice
             # iterative solution
             for x in range(1,degree):
                 matAT = np.matrix(AT) # get Atranspose
@@ -222,6 +220,8 @@ class DataSet(object):
                 rSquared = 1 - (sfi / syi) # rsquared value
                 lastdiff = diff
                 diff = 1-(lastrsq/ rSquared)
+                if diff == 0:
+                    diff = 0.00000000001
                 polyArr.append((poly,rSquared,lastdiff/diff))
                 if (lastrsq > rSquared):
                     break
@@ -312,7 +312,6 @@ class DataSet(object):
         # iterate until complete
         dataArr = self.data[self.dataNames.index(varName)] # get data to use
         for x in range(0, maxIters):
-            print(kmeans)
             sortedValues = []
             for i in range(0, number):
                 sortedValues.append([]) # create empty sorted array
@@ -351,3 +350,19 @@ class DataSet(object):
         for i in range(0,number):
             finalKmeans.append((kmeans[i],np.std(sortedValues[i]))) # tuple (kmean, stddev of kmean)
         return finalKmeans
+
+    def getMovAvg(self, varName, points, reverse = False):
+        """gets moving average of variable of a number of points starting at back of dataset.
+        can be reversed to use front of dataset"""
+        index = self.dataNames.index(varName)
+        if points > self.lenData:
+            raise ValueError("Dataset doesn't have enough points")
+        average = 0
+        if reverse: # start at front of list
+            for x in range(0,points):
+                average += self.data[index][x] # increment sum
+        else: # start at back of list
+            for x in range((self.lenData - 1),((self.lenData - points) - 1), -1):
+                average += self.data[index][x] # increment sum
+        average /= points # divide by number of points
+        return average

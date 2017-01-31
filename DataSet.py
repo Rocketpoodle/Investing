@@ -157,13 +157,13 @@ class DataSet(object):
             self.data[index][x] = newval
         return 0
 
-    def plotData(self, independant, dependant):
+    def plotData(self, independant, dependant, blocking = True):
         """plots data of dataset, specifying name of independant variable and dependant variable(s).
         can specify plot arguments"""
         xVals = self.data[self.dataNames.index(independant)]
         for names in dependant: # plot data according to specification
             plt.plot(xVals,self.data[self.dataNames.index(names)])
-        plt.show() # show plot
+        plt.show(block=blocking) # show plot
 
     def curveFit(self, independant, dependant, degree = None):
         """returns curve fit of requested data. Can specify degree or quality factor.
@@ -221,7 +221,7 @@ class DataSet(object):
                 lastdiff = diff
                 diff = 1-(lastrsq/ rSquared)
                 if diff == 0:
-                    diff = 0.00000000001
+                    diff = 1e-16
                 polyArr.append((poly,rSquared,lastdiff/diff))
                 if (lastrsq > rSquared):
                     break

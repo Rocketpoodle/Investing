@@ -8,6 +8,7 @@ import cmath
 
 
 data1 = DataSet(["x","y"])
+"""
 end = random.randrange(10,20)
 end2 = random.randrange(2,8)
 for x in range (0,end):
@@ -31,3 +32,19 @@ if len(mins) > 0:
 fitdata = fit.evaluate(data1.getDataVariable("x"))
 data1.addDataVariable("fit",fitdata)
 data1.plotData("x",["y","fit"],iscale = scale, ioffset = offset)
+"""
+data1.appendDataPoint([0,0])
+data1.appendDataPoint([1,1])
+data1.appendDataPoint([2,2])
+data1.appendDataPoint([3,3])
+data1.appendDataPoint([4,4])
+data1.plotData("x",["y"],scaled=False)
+data1.plotData("x",["y"],scaled=True)
+data1.scaleDataVariable("x",1,2)
+data1.plotData("x",["y"],scaled=False)
+data1.plotData("x",["y"],scaled=True)
+data1.scaleDataVariable("x",2,4)
+data1.plotData("x",["y"],scaled=False)
+data1.plotData("x",["y"],scaled=True)
+
+

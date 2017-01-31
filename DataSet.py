@@ -11,6 +11,8 @@ class DataSet(object):
     data = [] # array of data arrays. Primary array index corresponds to data name index
     numVars = 0 # number of data variables (data sub arrays)
     lenData = 0 # length of data sub arrays
+    varScale = [] # scale for variables
+    varOffset = [] # offset for variables
 
     def __init__(self, dataNames = None, data = None):
         # check for data names present
@@ -44,6 +46,8 @@ class DataSet(object):
             self.data = []
             for x in range(0, self.numVars):
                 self.data.append([])
+        self.varScale = [1]*self.numVars
+        self.varOffset = [0]*self.numVars
 
     def appendDataPoint(self, pointData, pointNames = None):
         """appends datapoint to array with optional names array"""
@@ -100,6 +104,8 @@ class DataSet(object):
             raise ValueError("New data is not of the correct length")
         self.data.append(varData) # append variable
         self.dataNames.append(varName)
+        self.varOffset.append(0)
+        self.varScale.append(1)
         self.numVars += 1 # increment number of variables
 
     def delDataVariable(self, varName):
@@ -109,6 +115,8 @@ class DataSet(object):
         self.numVars -= 1 # decrement variable
         popindex = self.dataNames.index(varName)
         self.dataNames.pop(popindex)
+        self.varOffset.pop(popindex)
+        self.varScale.pop(popindex)
         return self.data.pop(popindex) # pop variable
 
     def getDataPoint(self, index, vars = None, varName = None):
@@ -128,9 +136,12 @@ class DataSet(object):
             point = swappoint
         return point
 
-    def getDataVariable(self, varName):
+    def getDataVariable(self, varName, scaled = True):
         """gets data array for varname"""
-        return self.data[self.dataNames.index(varName)].copy()
+        index = self.dataNames.index(varName)
+        if scaled == False: # if data needs to be descaled
+            return [(x - self.varOffset[index])*self.varScale[index] for x in self.data[index]]
+        return self.data[index].copy()
 
     def toMatrix(self, vars = None, swap = False):
         """returns dataset in numpy matrix form. can specify which variables to use and wether to swap rows and columns"""
@@ -144,40 +155,41 @@ class DataSet(object):
         if not swap: # invert if desired
             mat = mat.transpose()
         return mat
+    
+    def descaleDataVariable(self, varName):
+        """reverses scaling on data variables"""
+        index = self.dataNames.index(varName)
+        if self.lenData == 0: # check for empty data or 0 scale
+            return None
+        for x in range(0,self.lenData): # scale values
+            newval = (self.data[index][x] - self.varOffset[index])*self.varScale[index]
+            self.data[index][x] = newval
+        self.varScale[index] = 1
+        self.varOffset[index] = 0
+        return index
 
     def scaleDataVariable(self, varName, start = 0, end = 1):
         """scales vales to range from start to end"""
+        self.descaleDataVariable(varName) # first remove any current scaling
         index = self.dataNames.index(varName)
-        scale = end - start
-        if self.lenData == 0 or scale == 0: # check for empty data or 0 scale
+        if self.lenData == 0 or (end - start) == 0: # check for empty data or 0 scale
             return None
         minval, maxval = self.getMinMax(varName)
-        scale *= (maxval - minval)
-        start -= minval
+        scale = (maxval - minval) / (end - start)
+        start -= (minval / scale)
         for x in range(0,self.lenData): # scale values
-            newval = (start + self.data[index][x]) / scale
+            newval = (self.data[index][x] / scale) + start
             self.data[index][x] = newval
+        self.varScale[index] *= scale
+        self.varOffset[index] += start
         return scale, start
 
-    def plotData(self, independant, dependant, iscale = 1, ioffset = 0, dscale = None, doff = None, blocking = True):
+    def plotData(self, independant, dependant, scaled = True, doff = None, blocking = True):
         """plots data of dataset, specifying name of independant variable and dependant variable(s).
         can specify plot arguments"""
-        scalar = [1] * self.numVars
-        offset = [0] * self.numVars
-        if dscale != None: # check for scale
-            if len(dscale) != len(dependant):
-                raise ValueError("incorrect size of scale array")
-            for names in dependant: # copy scale and offset values
-                scalar[self.dataNames.index(names)] = dscale[dependant.index(names)]
-        if doff != None: # check for scale
-            if len(doff) != len(dependant):
-                raise ValueError("incorrect size of doff array")
-            for names in dependant: # copy offset values
-                offset[self.dataNames.index(names)] = doff[dependant.index(names)]
-        xVals = [(x*iscale) + ioffset for x in self.data[self.dataNames.index(independant)]]
+        xVals = self.getDataVariable(independant,scaled)
         for names in dependant: # plot data according to specification
-            index = self.dataNames.index(names)
-            plt.plot(xVals,[(x*scalar[index]) - offset[index] for x in self.data[index]])
+            plt.plot(xVals,self.getDataVariable(names,scaled))
         plt.show(block=blocking) # show plot
 
     def curveFit(self, independant, dependant, degree = None):

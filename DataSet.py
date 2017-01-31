@@ -221,10 +221,11 @@ class DataSet(object):
         lastpoly = None
         lasteval = None
         diff = 1
+        new = 0
         eval = [0] * self.lenData
         polyArr = []
         if degree == None: # check if degree is given
-            degree = self.lenData - 1# past 15 error is too high
+            degree = self.lenData
             # iterative solution
             for x in range(1,degree):
                 matAT = np.matrix(AT) # get Atranspose
@@ -249,9 +250,10 @@ class DataSet(object):
                 rSquared = 1 - (sfi / syi) # rsquared value
                 lastdiff = diff
                 diff = 1-(lastrsq/ rSquared)
+                new = diff / (1 - rSquared)
                 if diff == 0:
-                    diff = 1e-16
-                polyArr.append((poly,rSquared,lastdiff/diff))
+                    diff = 2e-17
+                polyArr.append((poly,rSquared,diff/lastdiff))
                 if (lastrsq > rSquared):
                     break
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data

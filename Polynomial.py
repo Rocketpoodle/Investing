@@ -8,6 +8,7 @@ class Polynomial(object):
     degree = 0
 
     def __init__(self, coeff = []):
+        x=0
         for x in range(0, len(coeff)): # strip leading 0 coefficients
             if coeff[x] != 0:
                 break

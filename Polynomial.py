@@ -160,4 +160,44 @@ class Polynomial(object):
             return integral.evaluate(interval[1]) - integral.evaluate(interval[0])
         return integral
 
+    def getMinMax(self, interval = None):
+        """finds mins and maxes for polynomial. can specify interval and whether to return non-real roots"""
+        if self.degree > 1: # check for linear polynomial
+            dp = self.differentiate() # derivative
+            ddp = dp.differentiate() # second derivative
+            coeffarr = dp.getRoots(real=True) # find where derivative is 0
+            mins = [] # stores minima
+            maxs = [] # stores maxima
+            pois = [] # stores non min/max points of infleciton
+            for elements in coeffarr:
+                ppp = ddp.evaluate(elements)
+                if ppp > 0: # min
+                    mins.append(elements)
+                elif ppp < 0: # max
+                    maxs.append(elements)
+                else: # point of inflection
+                    pois.append(elements)
+            mins.sort()
+            maxs.sort()
+            pois.sort()
+            if interval != None:
+                newmin = []
+                newmax = []
+                newpoi = []
+                if len(interval) != 2:
+                    raise ValueError("interval should be size 2 [start,stop]")
+                for elements in mins:
+                    if elements <= interval[1] and elements >= interval[0]:
+                        newmin.append(elements) # append mins in intverval
+                for elements in maxs:
+                    if elements <= interval[1] and elements >= interval[0]:
+                        newmax.append(elements) # append maxs in intverval
+                for elements in pois:
+                    if elements <= interval[1] and elements >= interval[0]:
+                        newpoi.append(elements) # append pois in intverval
+                return (newmin, newmax, newpoi)
+            return (mins, maxs, pois)
+        else:
+            return ([],[],[]) # linear can't have mins maxes
+            #raise ValueError("Linear polynomial has no min/max") # depricated raising exception
         

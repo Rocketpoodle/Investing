@@ -397,3 +397,13 @@ class DataSet(object):
                 average += self.data[index][x] # increment sum
         average /= points # divide by number of points
         return average
+
+    def getDistance(self, i1, i2):
+        """returns Euclidean distance between two points at index i1 and i2"""
+        sumofsquares = 0
+        for x in range(0,self.numVars): # sum of squares
+            diff = self.data[i1][x] - self.data[i2][x] # difference
+            sumofsquares += diff*diff # add square of difference 
+        if sumofsquares < 0:
+            return cmath.sqrt(sumofsquares)
+        return math.sqrt(sumofsquares) # distance

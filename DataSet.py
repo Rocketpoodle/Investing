@@ -209,6 +209,8 @@ class DataSet(object):
             dist = (yval[x] - ymean)
             dist *= dist
             syi += dist
+        if syi == 0:
+            syi = 2e-17
         AT = []
         matB = self.toMatrix(vars = dependant)
         currArr = [1]*self.lenData # create initial row
@@ -221,7 +223,6 @@ class DataSet(object):
         lastpoly = None
         lasteval = None
         diff = 1
-        new = 0
         eval = [0] * self.lenData
         polyArr = []
         if degree == None: # check if degree is given
@@ -237,25 +238,25 @@ class DataSet(object):
                 for i in range(0, x + 1): # strip coefficeints out
                     coeffs.append(done.item(i))
                 coeffs.reverse()
-                lastpoly = poly
-                lasteval = eval
-                poly = Polynomial(coeffs) # create polynomial 
-                eval = poly.evaluate(self.data[indepIndex]) # get fi
-                sfi = 0
-                for i in range(0, self.lenData): # get sum of residuals
-                    val = yval[i] - eval[i]
-                    val *= val
-                    sfi += val
-                lastrsq = rSquared
-                rSquared = 1 - (sfi / syi) # rsquared value
-                lastdiff = diff
-                diff = 1-(lastrsq/ rSquared)
-                new = diff / (1 - rSquared)
-                if diff == 0:
-                    diff = 2e-17
-                polyArr.append((poly,rSquared,diff/lastdiff))
-                if (lastrsq > rSquared):
-                    break
+                if coeffs[0] != 0:
+                    lastpoly = poly
+                    lasteval = eval
+                    poly = Polynomial(coeffs) # create polynomial 
+                    eval = poly.evaluate(self.data[indepIndex]) # get fi             
+                    sfi = 0
+                    for i in range(0, self.lenData): # get sum of residuals
+                        val = yval[i] - eval[i]
+                        val *= val
+                        sfi += val
+                    lastrsq = rSquared
+                    rSquared = 1 - (sfi / syi) # rsquared value
+                    lastdiff = diff
+                    diff = 1-(lastrsq/ rSquared)
+                    if diff == 0:
+                        diff = 2e-17
+                    if (lastrsq > rSquared):
+                        break
+                    polyArr.append((poly,rSquared,diff/lastdiff))
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data
                 AT.append(currArr) # append to AT 2D matrix
             maxvalue = 0
@@ -266,7 +267,6 @@ class DataSet(object):
                     maxvalue = polyArr[i][2]
                     maxindex = i
             return polyArr[maxindex][0], polyArr[maxindex][1]
-
         else: # definite degree solution
             for x in range(1,degree):
                 currArr = np.multiply(currArr,self.data[indepIndex]) # add next order data

@@ -8,13 +8,13 @@ class Polynomial(object):
     degree = 0
 
     def __init__(self, coeff = []):
-        x=0
         for x in range(0, len(coeff)): # strip leading 0 coefficients
             if coeff[x] != 0:
                 break
         self.coefficients = coeff[x:]
         self.degree = (len(coeff) - x)-1 # save degree
-        if self.degree < 0: # check if polynomial has no coefficients
+        if self.degree < 1: # check if polynomial has no coefficients
+            print(coeff)
             raise ValueError("Empty Polynomial") 
 
     def evaluate(self, x):
@@ -44,6 +44,8 @@ class Polynomial(object):
         """returns polynomial class of derivative"""
         # create new array of coefficients
         derivCoeff = []
+        if self.degree <= 1:
+            return self.coefficients[0]
         for x in range (0,self.degree):
             derivCoeff.append(self.coefficients[x]*(self.degree - x))
         deriv = Polynomial(derivCoeff)
@@ -136,3 +138,26 @@ class Polynomial(object):
                     realroots.append(root.real)
             roots = realroots
         return roots # return sorted roots
+
+    def integrate(self, offset = 0, initialvalue = None, interval = None):
+        """integrates polynomial. Default sets C = 0, can specify C or inital point to solve for offset.
+        Specifying interval will evaluate integral over inverval (of length 2) and return evaluation"""
+        intCoeff = [] # new coefficients
+        for x in range (0,self.degree+1):
+            intCoeff.append(self.coefficients[x]/((self.degree - x)+1))
+        intCoeff.append(offset) # append C value
+        integral = Polynomial(intCoeff)
+        if initialvalue != None: # solve for correct C value
+            if offset != 0:
+                raise ValueError("can't specify offset and initial value")
+            if len(initialvalue) != 2:
+                raise ValueError("intial value should be size 2 [x,y]")
+            y = integral.evaluate(initialvalue[0]) # get 0 offset evaluation
+            integral.coefficients[integral.degree] = initialvalue[1] - y # C = expected - actual 
+        if interval != None: # evaluate
+            if len(interval) != 2:
+                raise ValueError("interval should be size 2 [start,stop]")
+            return integral.evaluate(interval[1]) - integral.evaluate(interval[0])
+        return integral
+
+        

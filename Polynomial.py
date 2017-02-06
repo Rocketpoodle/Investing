@@ -3,12 +3,15 @@ import math
 
 class Polynomial(object):
     """Polinomial class contains coefficients and can evaluate itself
-    and find its derivative. Also it can evaluate an array of points."""
+    and find its derivative. Also it can evaluate an array of points.
+    Can also specify x scale components"""
         
     coefficients = []
     degree = 0
+    scale = 1
+    offset = 0
 
-    def __init__(self, coeff = []):
+    def __init__(self, coeff = [], scale = 1, offset = 0):
         for x in range(0, len(coeff)): # strip leading 0 coefficients
             if coeff[x] != 0:
                 break
@@ -17,10 +20,24 @@ class Polynomial(object):
         if self.degree < 1: # check if polynomial has no coefficients
             print(coeff)
             raise ValueError("Empty Polynomial") 
+        self.scale = scale
+        self.offset = offset
+    
+    def setScale(self, scale, offset):
+        """sets scale info for polynomial"""
+        self.scale = scale
+        self.offset = offset
 
-    def evaluate(self, x):
+    def getScale(self):
+        """returns scale info for polynomial"""
+        return self.scale, self.offset
+
+    def evaluate(self, x, scale = False):
         """evaluates polynomial at x using Horners factorizaiton"""
         # list evaluation
+        if scale: # scale value if requested
+                x = (x - self.offset)*self.scale
+
         if type(x) is list:
             evalarr = [] # start with blank list
             for y in x:
@@ -137,7 +154,7 @@ class Polynomial(object):
                 absroot = abs(root)
                 if absroot == 0:
                     realroots.append(0)
-                elif (root.real / absroot) >= (1 - worstalpha): # considered real if its better than worst alpha
+                elif (abs(root.real) / absroot) >= (1 - worstalpha): # considered real if its better than worst alpha
                     realroots.append(root.real)
             roots = realroots
         return roots # return sorted roots
@@ -163,7 +180,7 @@ class Polynomial(object):
             return integral.evaluate(interval[1]) - integral.evaluate(interval[0])
         return integral
 
-    def getMinMax(self, interval = None):
+    def getMinMax(self, interval = None, scale = False):
         """finds mins and maxes for polynomial. can specify interval and whether to return non-real roots"""
         if self.degree > 1: # check for linear polynomial
             dp = self.differentiate() # derivative
@@ -183,6 +200,13 @@ class Polynomial(object):
             mins.sort()
             maxs.sort()
             pois.sort()
+            if scale: # scale values if requested
+                for y in range(0, len(mins)) :
+                    mins[y] = (mins[y] - self.offset)*self.scale
+                for y in range(0, len(maxs)) :
+                    maxs[y] = (maxs[y] - self.offset)*self.scale
+                for y in range(0, len(pois)) :
+                    pois[y] = (pois[y] - self.offset)*self.scale
             if interval != None:
                 newmin = []
                 newmax = []

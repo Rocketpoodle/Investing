@@ -96,7 +96,7 @@ class DataSet(object):
         self.lenData -= 1 # decrement length
         return popped
 
-    def addDataVariable(self, varName, varData):
+    def addDataVariable(self, varName, varData, scale = [0,1]):
         """adds variable to dataset (requires data of length equal to current data length)"""
         if self.dataNames.count(varName) != 0: # check if variable already exists
             raise ValueError("A variable of that name already exists")
@@ -104,8 +104,8 @@ class DataSet(object):
             raise ValueError("New data is not of the correct length")
         self.data.append(varData) # append variable
         self.dataNames.append(varName)
-        self.varOffset.append(0)
-        self.varScale.append(1)
+        self.varOffset.append(scale[0])
+        self.varScale.append(scale[1])
         self.numVars += 1 # increment number of variables
 
     def delDataVariable(self, varName):
@@ -168,7 +168,7 @@ class DataSet(object):
         self.varOffset[index] = 0
         return index
 
-    def scaleDataVariable(self, varName, start = 0, end = 1):
+    def scaleDataVariable(self, varName, start = -1, end = 1):
         """scales vales to range from start to end"""
         self.descaleDataVariable(varName) # first remove any current scaling
         index = self.dataNames.index(varName)
@@ -183,6 +183,11 @@ class DataSet(object):
         self.varScale[index] *= scale
         self.varOffset[index] += start
         return scale, start
+
+    def getVarScale(self, varName):
+        """gets variable scaling information"""
+        index = self.dataNames.index(varName) # get var index
+        return [self.varOffset[index], self.varScale[index]]
 
     def plotData(self, independant, dependant, scaled = True, doff = None, blocking = True):
         """plots data of dataset, specifying name of independant variable and dependant variable(s).
@@ -407,4 +412,16 @@ class DataSet(object):
         if sumofsquares < 0:
             return cmath.sqrt(sumofsquares) # less than 0
         return math.sqrt(sumofsquares) # distance
-    
+
+    def getCurveFitEasy(self, independant, dependant):
+        """gets curve fit using default settings and scales data to give best results
+        then appends data as new variable with name fit_<dependant>"""
+        self.scaleDataVariable(independant)
+        newName = "fit_" + dependant
+        fit, rsq = self.curveFit(independant, dependant)
+        fitdata = fit.evaluate(self.getDataVariable(independant))
+        xscaling = self.getVarScale(independant)
+        fit.setScale(xscaling[1], xscaling[0])
+        self.addDataVariable(newName , fitdata)
+        self.descaleDataVariable(independant)
+        return newName, fit, rsq

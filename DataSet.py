@@ -405,5 +405,6 @@ class DataSet(object):
             diff = self.data[x][i1] - self.data[x][i2] # difference
             sumofsquares += diff*diff # add square of difference 
         if sumofsquares < 0:
-            return cmath.sqrt(sumofsquares)
+            return cmath.sqrt(sumofsquares) # less than 0
         return math.sqrt(sumofsquares) # distance
+    

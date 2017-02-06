@@ -30,15 +30,14 @@ for i in range(0,1000):
     arsq += rsq
     deg += fit.degree
     print(fit.degree, rsq)
-    print(kmeans)
-    print(stats)
-    print(movavg)
+    #print(kmeans)
+    #print(stats)
+    #print(movavg)
     print(minmax)
-    data1.plotData("x",["y","fit","kl","kh"],scaled = False)
+    data1.plotData("x",["y","fit","kl","kh"])
 arsq /= 1000
 deg /= 1000
 end = time.time()
 total = end - start
 print("Time Elapsed: ", total, "\nTime per: ", (total/1000))
 print(arsq, deg)
-

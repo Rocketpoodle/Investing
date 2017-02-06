@@ -1,4 +1,5 @@
 import cmath
+import math
 
 class Polynomial(object):
     """Polinomial class contains coefficients and can evaluate itself
@@ -81,33 +82,33 @@ class Polynomial(object):
         value += self.coefficients[self.degree]
         if value != 0 and strict: # check for valid deflation
             raise ValueError("Not a valid root, Cannot Deflate")
-        return Polynomial(newcoeffs) # return deflated polynomial
+        return Polynomial(newcoeffs), value # return deflated polynomial
 
-    def getRoots(self,value = 0, real = False, maxIters = 10):
+    def getRoots(self,value = 0, real = False, maxIters = 15):
         """solves for roots using laguerres method. Set value to change what y value it finds roots for.
         Real sets wether or not to only return real roots (returns them as float)"""
         roots = []
         currpoly = Polynomial(self.coefficients) # start as self as current polynomial
         currpoly.coefficients[self.degree] -= value # shift value to solve for
+        worstalpha = 2e-17 
         while(currpoly != None):
             if currpoly.degree == 1: # linear
                 roots.append((0 - currpoly.coefficients[1]) / currpoly.coefficients[0])
                 break # done finding roots
             elif currpoly.degree == 2: # quadratic
                 twoa = 2*currpoly.coefficients[0]
-                sqrtbac = (cmath.sqrt((currpoly.coefficients[1]*currpoly.coefficients[1]) - 4*currpoly.coefficients[0]*currpoly.coefficients[2]) / twoa)
+                sqrtbac = cmath.sqrt((currpoly.coefficients[1]*currpoly.coefficients[1]) - 4*currpoly.coefficients[0]*currpoly.coefficients[2]) / twoa
                 b2a = (0 - currpoly.coefficients[1])/(twoa)
                 roots.append(b2a + sqrtbac)
                 roots.append(b2a - sqrtbac)
                 break # done finding roots
             else:
                 root = 0 # initialize root
-                alpha = 1 # starting alpha at 0
-                lalpha = [2,3]
+                alpha = 1 # starting alpha at 1
                 dp = currpoly.differentiate() # get derivative
                 ddp = dp.differentiate() # get second derivative
                 iters = 0
-                while(abs(alpha) > 2e-17 and iters < maxIters):
+                while(alpha > 2e-17 and iters < maxIters):
                     iters += 1
                     p = currpoly.evaluate(root) # get polynomial value at root
                     pp = dp.evaluate(root) # get derivative at root
@@ -125,16 +126,18 @@ class Polynomial(object):
                     else:
                         alpha = currpoly.degree / denom2
                     root -= alpha # update root
-                currpoly = currpoly.deflate(root) # deflate polynomial
-                roots.append(root) # store root
-                if root.imag != 0: # check if root was complex
-                    conj = root.conjugate() # get conjugate
-                    currpoly = currpoly.deflate(conj) # deflate polynomial again
-                    roots.append(conj) # store conjugate root
+                    alpha = abs(alpha)
+                if alpha > worstalpha:
+                    worstalpha = alpha
+                currpoly, after = currpoly.deflate(root) # deflate polynomial
+                roots.append(root)
         if real: # if real roots are requested
             realroots = []
             for root in roots:
-                if root.imag == 0: # checks if real
+                absroot = abs(root)
+                if absroot == 0:
+                    realroots.append(0)
+                elif (root.real / absroot) >= (1 - worstalpha): # considered real if its better than worst alpha
                     realroots.append(root.real)
             roots = realroots
         return roots # return sorted roots

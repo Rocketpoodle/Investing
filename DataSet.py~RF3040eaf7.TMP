@@ -451,10 +451,6 @@ class DataSet(object):
         """runs kmean analysis on dataset. Generates as many kmeans as necessary
         maxing at length of dataset/2. Returns kmean tuples (kmean, stddev, numValues).
         kmean is added when points fall within 2 (sigmaScale) sigma of each other"""
-        # get min and max 2d array
-        range = []
-        for i in range(0, self.numVars):
-            range.append(min(self.datap
         maxIters = self.lenData*self.lenData # maximum iterations equal to data length
         if self.lenData < 2:
             raise ValueError("Need at least 2 datapoints")
@@ -465,10 +461,10 @@ class DataSet(object):
         # main loop
         newsig = 1
         numMeans = 0
-        lastsig = 0
         while (numMeans < self.lenData):
             # initialize kmeans and values struct
             numMeans = len(kmeans)
+            print(lcv, numMeans)
             newKmeans = []
             sortedVals = []
             for x in range(0,numMeans):
@@ -512,9 +508,8 @@ class DataSet(object):
             if same: # done if no change has occured
                 newKmeans.append([self.getDataPoint(random.randrange(0, self.lenData)), [0]*self.numVars, 0])
                 lastsig += sigma
-                holdsig = newsig
-                newsig = lastsig / numMeans
-                print(numMeans, sigma, sigma / newsig, newsig / holdsig)
+                newsig = sigma
+                print(numMeans, sigma, sigma / lastsig, newsig - lastsig, newsig / lastsig)
                 input("")
             # update kmeans structure
             kmeans = newKmeans

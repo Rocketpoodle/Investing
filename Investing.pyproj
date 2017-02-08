@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ee4b44bd-2177-4000-83b7-d35d3316edd0}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>stringtest.py</StartupFile>
+    <StartupFile>test.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -32,6 +32,9 @@
     <Compile Include="getData.py" />
     <Compile Include="getRatings.py" />
     <Compile Include="initDB.py" />
+    <Compile Include="test.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ownedRatings.py" />
     <Compile Include="Polynomial.py">
       <SubType>Code</SubType>

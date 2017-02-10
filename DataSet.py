@@ -412,11 +412,11 @@ class DataSet(object):
         average /= points # divide by number of points
         return average
 
-    def getDistance(self, i1, i2):
+    def getDistance(self, p1, p2):
         """returns Euclidean distance between two points at index i1 and i2"""
         sumofsquares = 0
         for x in range(0,self.numVars): # sum of squares
-            diff = self.data[x][i1] - self.data[x][i2] # difference
+            diff = p1[x] - p2[x] # difference
             sumofsquares += diff*diff # add square of difference 
         if sumofsquares < 0:
             return cmath.sqrt(sumofsquares) # less than 0
@@ -452,27 +452,32 @@ class DataSet(object):
         maxing at length of dataset/2. Returns kmean tuples (kmean, stddev, numValues).
         kmean is added when points fall within 2 (sigmaScale) sigma of each other"""
         # get min and max 2d array
-        range = []
-        for i in range(0, self.numVars):
-            range.append(min(self.datap
         maxIters = self.lenData*self.lenData # maximum iterations equal to data length
         if self.lenData < 2:
             raise ValueError("Need at least 2 datapoints")
         # initialize to 2 kmeans (kmeans can be on top of each other to start)
         kmeans = []
-        kmeans.append([self.getDataPoint(0), [0]*self.numVars, 0])
-        kmeans.append([self.getDataPoint(1), [0]*self.numVars, 0])
+        saveMeans = []
+        saveIndicies = []
+        kmeans.append([self.getDataPoint(0), 0, 0])
+        kmeans.append([self.getDataPoint(1), 0, 0])
         # main loop
-        newsig = 1
         numMeans = 0
-        lastsig = 0
-        while (numMeans < self.lenData):
+        lastDI = 0
+        lastDB = 0
+        lastDDI = 0
+        composite = 1
+        lastcomp = 1
+        IDI = 0
+        while (numMeans < 20):
             # initialize kmeans and values struct
             numMeans = len(kmeans)
             newKmeans = []
             sortedVals = []
+            sortedDist = []
             for x in range(0,numMeans):
                 sortedVals.append([]) # 2d array initialization
+                sortedDist.append([])
             # sort values
             for i in range(0, self.lenData):
                 lowIndex = 0
@@ -483,12 +488,11 @@ class DataSet(object):
                         lowIndex = j
                         lowDist = dist
                 sortedVals[lowIndex].append(self.getDataPoint(i)) # append to correct sort location
+                sortedDist[lowIndex].append(lowDist) # append distance
             # update kmeans
-            sigma = 0
             for i in range(0, numMeans):
-                K = [[],[],0] # new kmean array
+                K = [[],0,0] # new kmean array
                 striplen = len(sortedVals[i])
-                ksig = 0
                 if striplen > 0: # check if kmean got any values
                     for h in range(0, self.numVars):
                         strippedArr = []
@@ -496,29 +500,118 @@ class DataSet(object):
                         for j in range(0, striplen): # strip array from 2d array
                             val = sortedVals[i][j][h]
                             strippedArr.append(val)
-                            mean += val 
+                            mean += val
                         mean /= striplen
-                        newSigma = np.std(strippedArr)
-                        ksig += newSigma*newSigma
+                        newSigma = np.std(sortedDist[i])
                         K[0].append(mean) # get kmean 
-                        K[1].append(newSigma)
+                        K[1] = newSigma
                         K[2] = striplen
                 else: # if kmean got no values re-initialize
-                    K = [self.getDataPoint(random.randrange(0, self.lenData)), [0]*self.numVars, 0]
-                sigma += math.sqrt(ksig)
+                    K = [self.getDataPoint(random.randrange(0, self.lenData)), 0, 0]
                 newKmeans.append(K) # append new Kmean
             # determine if changes were made
             same = (kmeans == newKmeans)
             if same: # done if no change has occured
-                newKmeans.append([self.getDataPoint(random.randrange(0, self.lenData)), [0]*self.numVars, 0])
-                lastsig += sigma
-                holdsig = newsig
-                newsig = lastsig / numMeans
-                print(numMeans, sigma, sigma / newsig, newsig / holdsig)
-                input("")
+                DI = self.getDunnIndex(newKmeans)
+                DB = self.getDaviesBouldin(newKmeans)
+                sil = self.getSilCoeff(newKmeans, sortedVals)
+                composite = (DI*sil) # / DB
+                DDI = DI - lastDI
+                print(numMeans, DI, sil, composite, DI + DDI)
+                print("")
+                if DDI == lastDDI and DDI == 0:
+                    break
+                # find kmean with most variance and add kmean to that set
+                lastDI = DI
+                maxVar = 0
+                maxIndex = 0
+                for x in range(0, numMeans):
+                    if newKmeans[x][1] > maxVar:
+                        maxVar = newKmeans[x][1]
+                        maxIndex = x
+                newKmeans.append([sortedVals[maxIndex][random.randrange(0, len(sortedVals[maxIndex]))], 0, 0])
             # update kmeans structure
             kmeans = newKmeans
         # return final Kmeans
         if not same: # clean newly added point
             kmeans.pop()
         return kmeans, same # return kmeans and validity
+
+    def getDaviesBouldin(self, kmeans):
+        """ Gets Davies-Bouldin index for Kmeans.
+        Sum of the maximum for each mean for the two sigmas over the distance between centroids"""
+        # initialize values
+        DB = 0
+        numMeans = len(kmeans)
+        # step through all points
+        for i in range(0, numMeans):
+            for j in range(0, numMeans): # calculate for all other points
+                maxValue = 0
+                if not i == j: # skip self
+                    # calculate distance
+                    dist = self.getDistance(kmeans[i][0], kmeans[j][0])
+                    value = (kmeans[i][1] + kmeans[j][1]) / dist # divide sum of sigmas by distance
+                    # check if new maximum
+                    if value > maxValue:
+                        maxValue = value
+            DB += maxValue # add maximum to index value
+        DB /= numMeans # divide by number of means to get final value
+        return DB
+
+    def getDunnIndex(self, kmeans):
+        """ Gets Dunn index for Kmeans.
+        minimum distance between clusters over maximum cluster sigma"""
+        numMeans = len(kmeans)
+        maxVal = kmeans[numMeans-1][1] # initialize to last sigmas since it wont be checked later
+        minVal = None
+        # calculate min and max values
+        for i in range(0, numMeans-1):
+            for j in range(i+1, numMeans): # calculate for all other points (except self)
+                dist = self.getDistance(kmeans[i][0], kmeans[j][0])
+                # update minval
+                if minVal == None:
+                    minVal = dist
+                elif dist < minVal:
+                    minVal = dist
+            # update maxVal
+            if kmeans[i][1] > maxVal:
+                maxVal = kmeans[i][1]
+        DI = minVal / maxVal
+        return DI
+
+    def getSilCoeff(self, kmeans, sortedVals):
+        """silhouette coefficient contrasts average distance other points"""
+        # initialize
+        numMeans = len(kmeans)
+        silCoeff = []
+        # step through all means
+        for i in range(0, numMeans):
+            # step through all points in mean
+            for k in range(0, len(sortedVals[i])):
+                sim = 0
+                distNeighbor = None
+                # step through values
+                for j in range(0, numMeans):
+                    # if i == j then update intra cluster distance
+                    if i == j:
+                        for l in range(0, len(sortedVals[j])):
+                            if k != l:
+                                sim += self.getDistance(sortedVals[i][k], sortedVals[j][l])
+                        sim /= len(sortedVals[j])
+                    # if i != j then update extra cluster distance
+                    else:
+                        dist = self.getDistance(sortedVals[i][k], kmeans[j][0])
+                        if distNeighbor == None:
+                            distNeighbor = dist
+                        elif dist < distNeighbor:
+                            distNeighbor = dist
+                # get max of A(i) and B(i)
+                silCo = distNeighbor - sim
+                if distNeighbor < sim:
+                    silCo /= sim
+                else:
+                    silCo /= distNeighbor
+                silCoeff.append(silCo) # append silhouette coefficient
+        avg = np.mean(silCoeff)
+        #sigma = np.std(silCoeff)
+        return avg

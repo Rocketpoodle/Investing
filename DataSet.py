@@ -447,7 +447,7 @@ class DataSet(object):
             return cmath.sqrt(sumofsquares) # less than 0
         return math.sqrt(sumofsquares) # distance
 
-    def kmeanAnalysis(self, sigmaScale = 2):
+    def kmeanAnalysis(self, sigmaScale = 2, startNum=2):
         """runs kmean analysis on dataset. Generates as many kmeans as necessary
         maxing at length of dataset/2. Returns kmean tuples (kmean, stddev, numValues).
         kmean is added when points fall within 2 (sigmaScale) sigma of each other"""
@@ -459,17 +459,14 @@ class DataSet(object):
         kmeans = []
         saveMeans = []
         saveIndicies = []
-        kmeans.append([self.getDataPoint(0), 0, 0])
-        kmeans.append([self.getDataPoint(1), 0, 0])
+        # initialize starting kmeans
+        for x in range(0, startNum):
+            kmeans.append([self.getDataPoint(random.randrange(0, self.lenData)), 0, 0])
         # main loop
         numMeans = 0
-        lastDI = 0
-        lastDB = 0
-        lastDDI = 0
-        composite = 1
-        lastcomp = 1
-        IDI = 0
-        while (numMeans < 20):
+        maxComposite = 0
+        bestMeans = None
+        while (numMeans < self.lenData):
             # initialize kmeans and values struct
             numMeans = len(kmeans)
             newKmeans = []
@@ -512,17 +509,30 @@ class DataSet(object):
             # determine if changes were made
             same = (kmeans == newKmeans)
             if same: # done if no change has occured
+                # check for done conditions
+                zeroPoint = False
+                pointNum = []
+                for kpoints in newKmeans:
+                    pointNum.append(kpoints[2])
+                    if kpoints[2] == 0:
+                        zeroPoint = True
+                        break
+                if zeroPoint:
+                    break
+                doneCheck = np.mean(pointNum) - sigmaScale * np.std(pointNum)
+                # determine score of Kmean
                 DI = self.getDunnIndex(newKmeans)
                 DB = self.getDaviesBouldin(newKmeans)
-                sil = self.getSilCoeff(newKmeans, sortedVals)
-                composite = (DI*sil) # / DB
-                DDI = DI - lastDI
-                print(numMeans, DI, sil, composite, DI + DDI)
-                print("")
-                if DDI == lastDDI and DDI == 0:
+                sil = self.getSilCoeff(newKmeans)
+                composite = (DI * sil) / DB
+                if composite > maxComposite:
+                    maxComposite = composite
+                    bestMeans = (newKmeans.copy(), DI, sil)
+                # break if done
+                if doneCheck < 0:
                     break
+                print(numMeans, doneCheck, composite)
                 # find kmean with most variance and add kmean to that set
-                lastDI = DI
                 maxVar = 0
                 maxIndex = 0
                 for x in range(0, numMeans):
@@ -533,9 +543,8 @@ class DataSet(object):
             # update kmeans structure
             kmeans = newKmeans
         # return final Kmeans
-        if not same: # clean newly added point
-            kmeans.pop()
-        return kmeans, same # return kmeans and validity
+        bestMeans = bestMeans[0], self.getDaviesBouldin(bestMeans[0]), bestMeans[1], bestMeans[2]
+        return bestMeans
 
     def getDaviesBouldin(self, kmeans):
         """ Gets Davies-Bouldin index for Kmeans.
@@ -579,39 +588,30 @@ class DataSet(object):
         DI = minVal / maxVal
         return DI
 
-    def getSilCoeff(self, kmeans, sortedVals):
+    def getSilCoeff(self, kmeans):
         """silhouette coefficient contrasts average distance other points"""
         # initialize
         numMeans = len(kmeans)
-        silCoeff = []
+        silCoeff = 0
         # step through all means
         for i in range(0, numMeans):
-            # step through all points in mean
-            for k in range(0, len(sortedVals[i])):
-                sim = 0
-                distNeighbor = None
-                # step through values
-                for j in range(0, numMeans):
-                    # if i == j then update intra cluster distance
-                    if i == j:
-                        for l in range(0, len(sortedVals[j])):
-                            if k != l:
-                                sim += self.getDistance(sortedVals[i][k], sortedVals[j][l])
-                        sim /= len(sortedVals[j])
-                    # if i != j then update extra cluster distance
-                    else:
-                        dist = self.getDistance(sortedVals[i][k], kmeans[j][0])
-                        if distNeighbor == None:
-                            distNeighbor = dist
-                        elif dist < distNeighbor:
-                            distNeighbor = dist
-                # get max of A(i) and B(i)
-                silCo = distNeighbor - sim
-                if distNeighbor < sim:
-                    silCo /= sim
-                else:
-                    silCo /= distNeighbor
-                silCoeff.append(silCo) # append silhouette coefficient
-        avg = np.mean(silCoeff)
-        #sigma = np.std(silCoeff)
-        return avg
+            Ai = kmeans[i][1]
+            Bi = None
+            for j in range(0, numMeans):
+                # if i == j then update intra cluster distance
+                if i != j:
+                    dist = self.getDistance(kmeans[i][0], kmeans[j][0])
+                    if Bi == None:
+                        Bi = dist
+                    elif dist < Bi:
+                        Bi = dist
+            # get max of A(i) and B(i)
+            silCo = Bi - Ai
+            if Bi < Ai:
+                silCo /= Ai
+            else:
+                silCo /= Bi
+                silCo *= kmeans[i][2]
+                silCoeff += silCo # append silhouette coefficient
+        silCoeff /= self.lenData
+        return silCoeff

@@ -3,20 +3,26 @@ import numpy
 import random
 import matplotlib.pyplot as plt    
 from DataSet import *
+import time
 
+start = time.time()
 data1 = DataSet(["x","y"])
-for x in range(0,50,10):
+for x in range(0,1000,10):
     for y in range(0,10):
-        data1.appendDataPoint([x + 9*random.random(),x + 9*random.random()])
-data1.plotData("x",["y"], scatter = [True], blocking = False)
-kmeans, same = data1.kmeanAnalysis(2)
+        data1.appendDataPoint([random.random()*1008, random.random()*1008])
+        #data1.appendDataPoint([x + 8*random.random(),x + 8*random.random()])
+data1.plotData("x",["y"], scatter = [True], blocking=False)
+kmeans, DB, DI, SIL = data1.kmeanAnalysis(sigmaScale=3)
+
+end = time.time()
+print(len(kmeans), end - start)
 xarr = []
 yarr = []
+print(kmeans)
 for point in kmeans:
-    print(point)
     xarr.append(point[0][0])
     yarr.append(point[0][1])
-plt.scatter(xarr, yarr)
+plt.scatter(xarr, yarr, marker='x')
 plt.show()
 #print(kmeans)
-print(len(kmeans[0]))
+print(len(kmeans))

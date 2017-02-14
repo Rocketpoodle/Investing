@@ -1,6 +1,6 @@
-#from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 import time
-class DataPoint(object):
+class DataPoint():
 
     def getDataArray(self):
         attributes = self.__dict__

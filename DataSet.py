@@ -447,10 +447,15 @@ class DataSet(object):
             return cmath.sqrt(sumofsquares) # less than 0
         return math.sqrt(sumofsquares) # distance
 
-    def kmeanAnalysis(self, sigmaScale = 2, startNum=2):
+    def kmeanAnalysis(self, sigmaScale = 2, startNum = 2, refineSigma = None, popSig = None, refine = True):
         """runs kmean analysis on dataset. Generates as many kmeans as necessary
         maxing at length of dataset/2. Returns kmean tuples (kmean, stddev, numValues).
         kmean is added when points fall within 2 (sigmaScale) sigma of each other"""
+        # check refinement sigma scale
+        if refineSigma == None:
+            refineSigma = 2
+        if popSig == None:
+            popSig = 1
         # get min and max 2d array
         maxIters = self.lenData*self.lenData # maximum iterations equal to data length
         if self.lenData < 2:
@@ -524,14 +529,16 @@ class DataSet(object):
                 DI = self.getDunnIndex(newKmeans)
                 DB = self.getDaviesBouldin(newKmeans)
                 sil = self.getSilCoeff(newKmeans)
-                composite = (DI * sil) / DB
+                composite = (DI * sil * (numMeans - 1)) / DB
+                # update best mean
                 if composite > maxComposite:
                     maxComposite = composite
-                    bestMeans = (newKmeans.copy(), DI, sil)
+                    bestMeans = (newKmeans.copy(), sortedVals.copy())
                 # break if done
                 if doneCheck < 0:
+                    if numMeans == 2:
+                        bestMeans = (newKmeans.copy(), sortedVals.copy())
                     break
-                print(numMeans, doneCheck, composite)
                 # find kmean with most variance and add kmean to that set
                 maxVar = 0
                 maxIndex = 0
@@ -543,8 +550,78 @@ class DataSet(object):
             # update kmeans structure
             kmeans = newKmeans
         # return final Kmeans
-        bestMeans = bestMeans[0], self.getDaviesBouldin(bestMeans[0]), bestMeans[1], bestMeans[2]
-        return bestMeans
+        if refine:
+            oldMeans = (bestMeans[0], self.getDaviesBouldin(bestMeans[0]), self.getDunnIndex(bestMeans[0]), self.getSilCoeff(bestMeans[0]))
+            # mean refinement
+            kmeans = bestMeans[0]
+            sortedVals = bestMeans[1]
+            origVals = sortedVals.copy()
+            # intialize values
+            numMeans = len(kmeans)
+            newSorted = []
+            newDist = []
+            newKmeans = []
+            for x in range(0,numMeans):
+                newSorted.append([]) # 2d array initialization
+                newDist.append([])
+            # step through all means removing any points outside refinement range
+            for x in range(0, numMeans):
+                for values in sortedVals[x]:
+                    dist = self.getDistance(kmeans[x][0], values)
+                    # check if within sigma range
+                    if dist <= refineSigma*kmeans[x][1]:
+                        newSorted[x].append(values)
+                        newDist[x].append(dist)
+            # update means
+            for i in range(0, numMeans):
+                K = [[],0,0] # new kmean array
+                striplen = len(newSorted[i])
+                if striplen > 0: # check if kmean got any values
+                    for h in range(0, self.numVars):
+                        strippedArr = []
+                        mean = 0
+                        for j in range(0, striplen): # strip array from 2d array
+                            val = newSorted[i][j][h]
+                            strippedArr.append(val)
+                            mean += val
+                        mean /= striplen
+                        newSigma = np.std(newDist[i])
+                        K[0].append(mean) # get kmean 
+                        K[1] = newSigma
+                        K[2] = striplen
+                    newKmeans.append(K) 
+            kmeans = newKmeans
+            sortedVals = newSorted
+        
+            newKmeans = []
+            sigArr = []
+            numArr = []
+            numMeans = len(kmeans)
+            # get array of kmean sigmas
+            for x in range(0, numMeans):
+                sigArr.append(kmeans[x][1])
+                numArr.append(kmeans[x][2])
+            # get std of kmean sigmas
+            sigstd = np.std(sigArr)
+            meanSig = np.mean(sigArr)
+            numstd = np.std(numArr)
+            meanNum = np.mean(numArr)
+            # remove kmeans that are outside of the sigma range
+            numPop = 0
+            for x in range(0, numMeans):
+                if kmeans[x][1] <= meanSig + popSig*sigstd and kmeans[x][2] >= meanNum - numstd:
+                    newKmeans.append(kmeans[x])
+                else:
+                    sortedVals.pop(x - numPop)
+                    numPop += 1
+            kmeans = newKmeans
+        #sortedVals = newSorted
+        # remove kmeans with too much variance
+        if len(newKmeans) > 1:
+            bestMeans = (newKmeans, self.getDaviesBouldin(newKmeans), self.getDunnIndex(newKmeans), self.getSilCoeff(newKmeans))
+        else:
+            bestMeans = (newKmeans, 0, 0, 0)
+        return bestMeans, oldMeans
 
     def getDaviesBouldin(self, kmeans):
         """ Gets Davies-Bouldin index for Kmeans.

@@ -32,6 +32,7 @@
     <Compile Include="getData.py" />
     <Compile Include="getRatings.py" />
     <Compile Include="initDB.py" />
+    <Compile Include="metaTest.py" />
     <Compile Include="test.py">
       <SubType>Code</SubType>
     </Compile>

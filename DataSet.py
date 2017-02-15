@@ -447,29 +447,26 @@ class DataSet(object):
             return cmath.sqrt(sumofsquares) # less than 0
         return math.sqrt(sumofsquares) # distance
 
-    def kmeanAnalysis(self, sigmaScale = 2, startNum = 2, refineSigma = None, popSig = None, refine = True):
+    def kmeanAnalysis(self, sigmaScale = 2, startNum = 2, refineSigma = None, trimSig = None, refine = True, trim = False):
         """runs kmean analysis on dataset. Generates as many kmeans as necessary
         maxing at length of dataset/2. Returns kmean tuples (kmean, stddev, numValues).
         kmean is added when points fall within 2 (sigmaScale) sigma of each other"""
         # check refinement sigma scale
         if refineSigma == None:
-            refineSigma = 2
-        if popSig == None:
-            popSig = 1
-        # get min and max 2d array
-        maxIters = self.lenData*self.lenData # maximum iterations equal to data length
+            refineSigma = 1
+        if trimSig == None:
+            trimSig = 1
         if self.lenData < 2:
             raise ValueError("Need at least 2 datapoints")
         # initialize to 2 kmeans (kmeans can be on top of each other to start)
         kmeans = []
-        saveMeans = []
-        saveIndicies = []
         # initialize starting kmeans
         for x in range(0, startNum):
             kmeans.append([self.getDataPoint(random.randrange(0, self.lenData)), 0, 0])
         # main loop
         numMeans = 0
-        maxComposite = 0
+        sil = 0
+        bestSorted = None
         bestMeans = None
         while (numMeans < self.lenData):
             # initialize kmeans and values struct
@@ -504,7 +501,7 @@ class DataSet(object):
                             strippedArr.append(val)
                             mean += val
                         mean /= striplen
-                        newSigma = np.std(sortedDist[i])
+                        newSigma = np.mean(sortedDist[i])
                         K[0].append(mean) # get kmean 
                         K[1] = newSigma
                         K[2] = striplen
@@ -514,30 +511,14 @@ class DataSet(object):
             # determine if changes were made
             same = (kmeans == newKmeans)
             if same: # done if no change has occured
-                # check for done conditions
-                zeroPoint = False
-                pointNum = []
-                for kpoints in newKmeans:
-                    pointNum.append(kpoints[2])
-                    if kpoints[2] == 0:
-                        zeroPoint = True
-                        break
-                if zeroPoint:
-                    break
-                doneCheck = np.mean(pointNum) - sigmaScale * np.std(pointNum)
                 # determine score of Kmean
-                DI = self.getDunnIndex(newKmeans)
-                DB = self.getDaviesBouldin(newKmeans)
+                lastSil = sil
                 sil = self.getSilCoeff(newKmeans)
-                composite = (DI * sil * (numMeans - 1)) / DB
-                # update best mean
-                if composite > maxComposite:
-                    maxComposite = composite
-                    bestMeans = (newKmeans.copy(), sortedVals.copy())
+                if sil > lastSil:
+                    bestMeans = newKmeans.copy()
+                    bestSorted = sortedVals.copy()
                 # break if done
-                if doneCheck < 0:
-                    if numMeans == 2:
-                        bestMeans = (newKmeans.copy(), sortedVals.copy())
+                else:
                     break
                 # find kmean with most variance and add kmean to that set
                 maxVar = 0
@@ -550,12 +531,10 @@ class DataSet(object):
             # update kmeans structure
             kmeans = newKmeans
         # return final Kmeans
+        kmeans = bestMeans
+        sortedVals = bestSorted
+        # mean refinement
         if refine:
-            oldMeans = (bestMeans[0], self.getDaviesBouldin(bestMeans[0]), self.getDunnIndex(bestMeans[0]), self.getSilCoeff(bestMeans[0]))
-            # mean refinement
-            kmeans = bestMeans[0]
-            sortedVals = bestMeans[1]
-            origVals = sortedVals.copy()
             # intialize values
             numMeans = len(kmeans)
             newSorted = []
@@ -592,7 +571,8 @@ class DataSet(object):
                     newKmeans.append(K) 
             kmeans = newKmeans
             sortedVals = newSorted
-        
+        # mean Trimming
+        if trim:
             newKmeans = []
             sigArr = []
             numArr = []
@@ -609,19 +589,22 @@ class DataSet(object):
             # remove kmeans that are outside of the sigma range
             numPop = 0
             for x in range(0, numMeans):
-                if kmeans[x][1] <= meanSig + popSig*sigstd and kmeans[x][2] >= meanNum - numstd:
+                if kmeans[x][1] <= meanSig + trimSig*sigstd and kmeans[x][2] >= meanNum - trimSig*numstd:
                     newKmeans.append(kmeans[x])
                 else:
                     sortedVals.pop(x - numPop)
                     numPop += 1
             kmeans = newKmeans
-        #sortedVals = newSorted
-        # remove kmeans with too much variance
-        if len(newKmeans) > 1:
-            bestMeans = (newKmeans, self.getDaviesBouldin(newKmeans), self.getDunnIndex(newKmeans), self.getSilCoeff(newKmeans))
+        # evaluate output means
+        if len(kmeans) > 1:
+            DI = self.getDunnIndex(kmeans)
+            DB = self.getDaviesBouldin(kmeans)
+            sil = self.getSilCoeff(kmeans)
         else:
-            bestMeans = (newKmeans, 0, 0, 0)
-        return bestMeans, oldMeans
+            DI = 0
+            DB = 0
+            sil = 0
+        return (kmeans, sil, DI, DB)
 
     def getDaviesBouldin(self, kmeans):
         """ Gets Davies-Bouldin index for Kmeans.

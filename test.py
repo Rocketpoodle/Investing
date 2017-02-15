@@ -49,6 +49,8 @@ for point in trimkmeans:
     xarr.append(point[0][0])
     yarr.append(point[0][1])
 plt.scatter(xarr, yarr, marker='+')
+for point in kmeans:
+    plt.subplot().add_artist(plt.Circle(point[0],4*point[1],fill=False))
 plt.show()
 #print(kmeans)
 print(len(kmeans))

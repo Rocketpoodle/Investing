@@ -527,7 +527,11 @@ class DataSet(object):
                     if newKmeans[x][1] > maxVar:
                         maxVar = newKmeans[x][1]
                         maxIndex = x
-                newKmeans.append([sortedVals[maxIndex][random.randrange(0, len(sortedVals[maxIndex]))], 0, 0])
+                randPoint = sortedVals[maxIndex][random.randrange(0, len(sortedVals[maxIndex]))] # get random point
+                newK = []
+                for i in range(0, self.numVars):
+                    newK.append((randPoint[i] + newKmeans[maxIndex][0][i]) /2) # average kmean and point to get new kmean
+                newKmeans.append([newK , 0, 0])
             # update kmeans structure
             kmeans = newKmeans
         # return final Kmeans
@@ -579,17 +583,16 @@ class DataSet(object):
             numMeans = len(kmeans)
             # get array of kmean sigmas
             for x in range(0, numMeans):
-                sigArr.append(kmeans[x][1])
+                sigArr.append(kmeans[x][1] / kmeans[x][2])
                 numArr.append(kmeans[x][2])
             # get std of kmean sigmas
             sigstd = np.std(sigArr)
             meanSig = np.mean(sigArr)
-            numstd = np.std(numArr)
-            meanNum = np.mean(numArr)
+            print("Trim above:", meanSig + trimSig*sigstd)
             # remove kmeans that are outside of the sigma range
             numPop = 0
             for x in range(0, numMeans):
-                if kmeans[x][1] <= meanSig + trimSig*sigstd and kmeans[x][2] >= meanNum - trimSig*numstd:
+                if (kmeans[x][1] / kmeans[x][2]) <= meanSig + trimSig*sigstd: 
                     newKmeans.append(kmeans[x])
                 else:
                     sortedVals.pop(x - numPop)

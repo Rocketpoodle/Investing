@@ -15,19 +15,22 @@ movavg = 0
 for i in range(0,1000):
     data1 = DataSet(["x","y"])
     y = random.randrange(-100,100)
+    avaar = []
     for x in range(0,51):
         y += random.randrange(-50,51)
         if x > 4:
             movavg = data1.getMovAvg("y",5)
         else:
             movavg = y
-        data1.appendDataPoint([x,y])     
+        data1.appendDataPoint([x,y])
+        avaar.append(movavg)     
     fitname, fit, rsq = data1.getCurveFitEasy("x","y")
     minmax = fit.getMinMax([0,51], scale = True)
     kmeans = data1.getKmeans("y")
     stats = data1.getStats("y")
     data1.addDataVariable("kl", [kmeans[0][0]]*data1.lenData + kmeans[0][1])
     data1.addDataVariable("kh", [kmeans[1][0]]*data1.lenData - kmeans[1][1])
+    data1.addDataVariable("mvav", avaar)
     arsq += rsq
     deg += fit.degree
     print(fit.degree, rsq)

@@ -9,3 +9,5 @@ def fetchOneStock(ticker):
         stockSoup = bs4.BeautifulSoup(stock)
     stockLink = stockSoup.find_all('p')[1].find_all('a')[0].get('href')
     urllib.request.urlretrieve(stockLink, "./data/" + ticker + ".csv")
+
+fetchOneStock("AAPL")

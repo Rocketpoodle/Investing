@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ee4b44bd-2177-4000-83b7-d35d3316edd0}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>test.py</StartupFile>
+    <StartupFile>diffeqtest1.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -25,6 +25,9 @@
     <Compile Include="Companystripper.py" />
     <Compile Include="CurveFit.py" />
     <Compile Include="DataSet.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="diffeqtest1.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="fetchSqlData.py" />

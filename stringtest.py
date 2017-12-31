@@ -12,13 +12,16 @@ start = time.time()
 arsq = 0
 deg = 0
 movavg = 0
+lastmovavg = 0
+endrange = 100
 for i in range(0,1000):
     data1 = DataSet(["x","y"])
     y = random.randrange(-100,100)
     avaar = []
-    for x in range(0,51):
+    for x in range(0,endrange+1):
         y += random.randrange(-50,51)
         if x > 4:
+            lastmovavg = movavg
             movavg = data1.getMovAvg("y",5)
         else:
             movavg = y
@@ -33,11 +36,14 @@ for i in range(0,1000):
     data1.addDataVariable("mvav", avaar)
     arsq += rsq
     deg += fit.degree
+    yvals = data1.getDataVariable("y")
+    deriv = fit.differentiate().evaluate(endrange-1,scale=True)
     print(fit.degree, rsq)
     print(kmeans)
     print(stats)
     print(movavg)
     print(minmax)
+    print(yvals[endrange] - yvals[endrange-1], deriv, movavg - lastmovavg)
     data1.plotData("x",["y",fitname,"kl","kh"])
     print("")
 arsq /= 1000

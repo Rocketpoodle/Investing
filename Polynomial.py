@@ -36,7 +36,7 @@ class Polynomial(object):
         """evaluates polynomial at x using Horners factorizaiton"""
         # list evaluation
         if scale: # scale value if requested
-                x = (x - self.offset)*self.scale
+                x = (x / self.scale) + self.offset
 
         if type(x) is list:
             evalarr = [] # start with blank list
@@ -67,6 +67,8 @@ class Polynomial(object):
         for x in range (0,self.degree):
             derivCoeff.append(self.coefficients[x]*(self.degree - x))
         deriv = Polynomial(derivCoeff)
+        scaleVals = self.getScale()
+        deriv.setScale(scaleVals[0], scaleVals[1])
         return deriv
 
     def __str__(self):
